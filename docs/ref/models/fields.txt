@@ -1208,3 +1208,55 @@ accepted by :class:`ForeignKey`, plus one extra argument:
     link back to the parent class, rather than the extra
     ``OneToOneField`` which would normally be implicitly created by
     subclassing.
+
+
+Composite Fields
+================
+
+.. module:: django.db.models.fields.virtual
+   :synopsis: Composite field type
+
+.. currentmodule:: django.db.models
+
+.. versionadded:: 1.4
+
+Composite fields provide a way to group several regular fields into a
+single one.
+
+``CompositeField``
+------------------
+
+.. class:: CompositeField(*fields[, primary_key=True, unique=True, db_index=True])
+
+A composite field. Requires at least two positional parameters, each
+specifying a single regular field present in the model. The
+``CompositeField`` will then enclose these fields into a single one.
+
+Arguments
+~~~~~~~~~
+
+``CompositeField`` is not a real model field (meaning it does not have a
+direct database representation), as such, it only accepts three options.
+
+.. attribute:: CompositeField.db_index
+
+    If ``True``, the CompositeField will create an index on database
+    columns corresponding to the enclosed fields when running the
+    :djadmin:`sqlindexes` command.
+
+.. attribute:: CompositeField.unique
+
+    If ``True``, the enclosed fields will be checked together for
+    uniqueness. Setting this option is essentially the same as specifying
+    the enclosed fields in the
+    :attr:`~django.db.models.Options.unique_together` model ``Meta``
+    attribute.
+
+.. attribute:: CompositeField.primary_key
+
+    Setting this option to ``True`` creates a primary key composed of
+    multiple database columns. Read more about composite primary keys in
+    the :doc:`/topics/db/models` topic guide.
+
+Any other options passed to the ``CompositeField`` will result in it
+failing model validation.
