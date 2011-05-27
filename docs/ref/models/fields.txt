@@ -1083,6 +1083,25 @@ define the details of how the relation works.
       DELETE`` constraint to the database field (perhaps using
       :ref:`initial sql<initial-sql>`).
 
+.. versionadded:: 1.4
+
+.. attribute:: ForeignKey.composed_of
+
+    When referencing a model with a :class:`CompositeField` as its primary
+    key, the referencing model needs a local field corresponding to each
+    remote field present in the referenced :class:`CompositeField` to
+    store the value of the remote primary key. By default, these fields
+    are added automatically; this option allows to create them by hand.
+
+    :attr:`composed_of` expects a tuple of local fields. Their number and
+    order has to correspond to those of the target
+    :class:`CompositeField`. However, django does no checking on the types
+    of these fields.
+
+    This option is invalid for :class:`ForeignKey` instances not
+    referencing a :class:`CompositeField` and will result in a model
+    validation error in this case.
+
 .. _ref-manytomany:
 
 ``ManyToManyField``
@@ -1213,7 +1232,7 @@ accepted by :class:`ForeignKey`, plus one extra argument:
 Composite Fields
 ================
 
-.. module:: django.db.models.fields.virtual
+.. module:: django.db.models.fields.composite
    :synopsis: Composite field type
 
 .. currentmodule:: django.db.models
@@ -1236,7 +1255,8 @@ Arguments
 ~~~~~~~~~
 
 ``CompositeField`` is not a real model field (meaning it does not have a
-direct database representation), as such, it only accepts three options.
+direct database representation), as such, it only accepts a small subset
+of options.
 
 .. attribute:: CompositeField.db_index
 
@@ -1256,7 +1276,7 @@ direct database representation), as such, it only accepts three options.
 
     Setting this option to ``True`` creates a primary key composed of
     multiple database columns. Read more about composite primary keys in
-    the :doc:`/topics/db/models` topic guide.
+    the :ref:`multi-column-primary-keys` section of the topic guide.
 
 Any other options passed to the ``CompositeField`` will result in it
 failing model validation.
