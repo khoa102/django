@@ -1280,3 +1280,20 @@ of options.
 
 Any other options passed to the ``CompositeField`` will result in it
 failing model validation.
+
+Value of a ``CompositeField``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When retrieved, the value of a ``CompositeField`` is represented by a
+|namedtuple|_. Each field in the |namedtuple|_ represents the value of
+one model field contained in the ``CompositeField``. The order of values
+in the |namedtuple|_ corresponds to the order in which the individual
+fields were given to the ``CompositeField`` constructor.
+
+When assigning a value to a ``CompositeField``, the value is expected to
+be an iterable (tuple, list) with length equal to the number of enclosed
+fields. Again, the order of values is expected to be the same as the order
+of enclosed fields.
+
+.. |namedtuple| replace:: ``namedtuple``
+.. _namedtuple: http://docs.python.org/library/collections.html#namedtuple-factory-function-for-tuples-with-named-fields
