@@ -28,6 +28,11 @@ class CompositeField(VirtualField):
     def contribute_to_class(self, cls, name):
         super(CompositeField, self).contribute_to_class(cls, name)
 
+        # If we are a ``unique`` field (but not a primary one),
+        # register as unique_together inside the model's _meta.
+        if self._unique:
+            cls._meta.unique_together.append(tuple(f.name for f in self.fields))
+
         # We can process the fields only after they've been added to the
         # model class.
         def process_enclosed_fields(sender, **kwargs):
@@ -35,6 +40,7 @@ class CompositeField(VirtualField):
             nt_fields = " ".join(f.name for f in self.fields)
             self.nt = namedtuple(nt_name, nt_fields)
             setattr(cls, name, self)
+
         signals.class_prepared.connect(process_enclosed_fields,
                                        sender=cls, weak=False)
 
