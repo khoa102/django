@@ -11,6 +11,7 @@ from django.db import connection
 from django.db.models import signals
 from django.db import models, router, DEFAULT_DB_ALIAS
 from django.db.models.fields.related import RelatedField, Field, ManyToManyRel
+from django.db.models import VirtualField
 from django.db.models.loading import get_model
 from django.forms import ModelForm
 from django.forms.models import BaseModelFormSet, modelformset_factory, save_instance
@@ -18,27 +19,23 @@ from django.contrib.admin.options import InlineModelAdmin, flatten_fieldsets
 from django.contrib.contenttypes.models import ContentType
 from django.utils.encoding import smart_text
 
-class GenericForeignKey(object):
+class GenericForeignKey(VirtualField):
     """
     Provides a generic relation to any object through content-type/object-id
     fields.
     """
 
     def __init__(self, ct_field="content_type", fk_field="object_id"):
+        super(GenericForeignKey, self).__init__()
         self.ct_field = ct_field
         self.fk_field = fk_field
 
     def contribute_to_class(self, cls, name):
-        self.name = name
-        self.model = cls
+        super(GenericForeignKey, self).contribute_to_class(cls, name)
         self.cache_attr = "_%s_cache" % name
-        cls._meta.add_virtual_field(self)
 
         # For some reason I don't totally understand, using weakrefs here doesn't work.
         signals.pre_init.connect(self.instance_pre_init, sender=cls, weak=False)
-
-        # Connect myself as the descriptor for this field
-        setattr(cls, name, self)
 
     def instance_pre_init(self, signal, sender, args, kwargs, **_kwargs):
         """

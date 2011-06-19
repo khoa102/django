@@ -13,9 +13,25 @@ class VirtualField(Field):
         self.set_attributes_from_name(name)
         self.model = cls
         cls._meta.add_virtual_field(self)
+        # Virtual fields are descriptors; they are not handled
+        # individually at instance level.
+        setattr(cls, name, self)
 
     def get_attname_column(self):
         return self.get_attname(), None
+
+    # XXX: Abstraction artifact: Virtual fields in general don't enclose
+    # any basic fields. However, the only actual implementation
+    # (CompositeField) does. Therefore, to avoid ugly special-casing
+    # inside the index creation code, this has been placed here.
+    def get_enclosed_fields(self):
+        return None
+
+    def __get__(self, instance, owner):
+        return None
+
+    def __set__(self, instance, value):
+        pass
 
 class CompositeField(VirtualField):
     """
@@ -43,6 +59,9 @@ class CompositeField(VirtualField):
 
         signals.class_prepared.connect(process_enclosed_fields,
                                        sender=cls, weak=False)
+
+    def get_enclosed_fields(self):
+        return self.fields
 
     def __get__(self, instance, owner):
         if instance is None:
