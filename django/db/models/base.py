@@ -392,7 +392,10 @@ class Model(six.with_metaclass(ModelBase, object)):
                 # "user_id") so that the object gets properly cached (and type
                 # checked) by the RelatedObjectDescriptor.
                 setattr(self, field.name, rel_obj)
-            else:
+            elif not field.virtual or val:
+                # We set the value unless we're setting a virtual field
+                # to an empty value which would fail or worse, override an
+                # explicitly-specified real field's value.
                 setattr(self, field.attname, val)
 
         if kwargs:

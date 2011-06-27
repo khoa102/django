@@ -262,6 +262,8 @@ class QuerySet(object):
         # build the list of fields that are to be loaded.
         if only_load:
             for field, model in self.model._meta.get_fields_with_model():
+                if field.virtual:
+                    continue
                 if model is None:
                     model = self.model
                 try:
@@ -283,6 +285,8 @@ class QuerySet(object):
             skip = set()
             init_list = []
             for field in fields:
+                if field.virtual:
+                    continue
                 if field.name not in load_fields:
                     skip.add(field.attname)
                 else:
@@ -1312,7 +1316,7 @@ def get_klass_info(klass, max_depth=0, cur_depth=0, requested=None,
      * max_depth - the maximum depth to which a select_related()
        relationship should be explored.
      * cur_depth - the current depth in the select_related() tree.
-       Used in recursive calls to determin if we should dig deeper.
+       Used in recursive calls to determine if we should dig deeper.
      * requested - A dictionary describing the select_related() tree
        that is to be retrieved. keys are field names; values are
        dictionaries describing the keys on that related object that
@@ -1324,7 +1328,7 @@ def get_klass_info(klass, max_depth=0, cur_depth=0, requested=None,
        following reverse select-related relations
     """
     if max_depth and requested is None and cur_depth > max_depth:
-        # We've recursed deeply enough; stop now.
+        # We've recursed deep enough; stop now.
         return None
 
     if only_load:
@@ -1343,8 +1347,10 @@ def get_klass_info(klass, max_depth=0, cur_depth=0, requested=None,
         # Handle deferred fields.
         skip = set()
         init_list = []
-        # Build the list of fields that *haven't* been requested
+        # Build the list of concrete fields that *haven't* been requested
         for field, model in klass._meta.get_fields_with_model():
+            if field.virtual:
+                continue
             if field.name not in load_fields:
                 skip.add(field.attname)
             elif local_only and model is not None:
@@ -1361,22 +1367,25 @@ def get_klass_info(klass, max_depth=0, cur_depth=0, requested=None,
     else:
         # Load all fields on klass
 
-        # We trying to not populate field_names variable for perfomance reason.
-        # If field_names variable is set, it is used to instantiate desired fields,
-        # by passing **dict(zip(field_names, fields)) as kwargs to Model.__init__ method.
-        # But kwargs version of Model.__init__ is slower, so we should avoid using
-        # it when it is not really neccesary.
-        if local_only and len(klass._meta.local_fields) != len(klass._meta.fields):
-            field_count = len(klass._meta.local_fields)
-            field_names = [f.attname for f in klass._meta.local_fields]
+        # We're trying not to populate the field_names variable for
+        # perfomance reasons.  If field_names variable is set, it is used
+        # to instantiate desired fields, by passing
+        # **dict(zip(field_names, fields)) as kwargs to Model.__init__
+        # method.  But the kwargs version of Model.__init__ is slower, so we
+        # should avoid using it when it is not really neccesary.
+        local_fields = klass._meta.local_concrete
+        fields = klass._meta.concrete_fields
+        if local_only and len(local_fields) != len(fields):
+            field_count = len(local_fields)
+            field_names = [f.attname for f in local_fields]
         else:
-            field_count = len(klass._meta.fields)
+            field_count = len(fields)
             field_names = ()
 
     restricted = requested is not None
 
     related_fields = []
-    for f in klass._meta.fields:
+    for f in klass._meta.concrete_fields:
         if select_related_descend(f, restricted, requested, load_fields):
             if restricted:
                 next = requested[f.name]

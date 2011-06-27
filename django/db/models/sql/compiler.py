@@ -274,7 +274,7 @@ class SQLCompiler(object):
         if start_alias:
             seen = {None: start_alias}
         for field, model in opts.get_fields_with_model():
-            if local_only and model is not None:
+            if (local_only and model is not None) or field.virtual:
                 continue
             if start_alias:
                 try:
@@ -735,7 +735,7 @@ class SQLCompiler(object):
                         if self.query.select:
                             fields = [f.field for f in self.query.select]
                         else:
-                            fields = self.query.model._meta.fields
+                            fields = [f for f in self.query.model._meta.fields if not f.virtual]
                         fields = fields + [f.field for f in self.query.related_select_cols]
 
                         # If the field was deferred, exclude it from being passed

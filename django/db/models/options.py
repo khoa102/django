@@ -156,7 +156,11 @@ class Options(object):
             if hasattr(self, '_m2m_cache'):
                 del self._m2m_cache
         else:
-            self.local_fields.insert(bisect(self.local_fields, field), field)
+            if field.virtual:
+                target = self.virtual_fields
+            else:
+                target = self.local_fields
+            target.insert(bisect(target, field), field)
             self.setup_pk(field)
             if hasattr(self, '_field_cache'):
                 del self._field_cache
@@ -164,9 +168,6 @@ class Options(object):
 
         if hasattr(self, '_name_map'):
             del self._name_map
-
-    def add_virtual_field(self, field):
-        self.virtual_fields.append(field)
 
     def setup_pk(self, field):
         if not self.pk and field.primary_key:
@@ -245,11 +246,14 @@ class Options(object):
         cache = []
         for parent in self.parents:
             for field, model in parent._meta.get_fields_with_model():
+                if field.virtual:
+                    continue
                 if model:
                     cache.append((field, model))
                 else:
                     cache.append((field, parent))
         cache.extend([(f, None) for f in self.local_fields])
+        cache.extend([(f, None) for f in self.virtual_fields])
         self._field_cache = tuple(cache)
         self._field_name_cache = [x for x, _ in cache]
 

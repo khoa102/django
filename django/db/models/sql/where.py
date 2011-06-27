@@ -191,16 +191,40 @@ class WhereNode(tree.Node):
             value_annotation = True
 
         if lookup_type in connection.operators:
+            if not isinstance(field_sql, (tuple, list)):
+                # Normalize to a tuple (composite fields already are
+                # tuples).
+                field_sql = (field_sql,)
             format = "%s %%s %%s" % (connection.ops.lookup_cast(lookup_type),)
-            return (format % (field_sql,
-                              connection.operators[lookup_type] % cast_sql,
-                              extra), params)
+            atoms = [format % (fs, connection.operators[lookup_type] % cast_sql, extra)
+                     for fs in field_sql]
+            if len(atoms) == 1:
+                # To avoid redundant parantheses in trivial case.
+                return atoms[0], params
+            return ' AND '.join("(%s)" % (a,) for a in atoms), params
 
         if lookup_type == 'in':
             if not value_annotation:
                 raise EmptyResultSet
             if extra:
                 return ('%s IN %s' % (field_sql, extra), params)
+
+            # XXX: Ugly hack: in case of composite IN clauses we have to
+            # split them into DNF statements using ``exact`` because some
+            # backends don't support tuple comparison.
+            # To be removed when this is delegated to the backend.
+            if isinstance(field_sql, (tuple, list)):
+                format = "%s %%s" % (connection.ops.lookup_cast('exact'),)
+                atoms = [format % (fs, connection.operators['exact'])
+                         for fs in field_sql]
+                single_case = ' AND '.join("(%s)" % (a,) for a in atoms)
+                dnf = ' OR '.join(repeat("(%s)" % (single_case,), len(params)))
+                # Since we get params as a list of lists from
+                # CompositeField.get_db_prep_lookup, we have to flatten it
+                # now.
+                params = [p for param_set in params for p in param_set]
+                return dnf, params
+
             max_in_list_size = connection.ops.max_in_list_size()
             if max_in_list_size and len(params) > max_in_list_size:
                 # Break up the params list into an OR of manageable chunks.
@@ -241,6 +265,10 @@ class WhereNode(tree.Node):
         "WHERE ... T1.foo = 6").
         """
         table_alias, name, db_type = data
+        if isinstance(name, (tuple, list)):
+            # We're handling a composite field; need to recurse.
+            return tuple(self.sql_for_columns((table_alias, n, t), qn, connection)
+                         for n, t in zip(name, db_type))
         if table_alias:
             lhs = '%s.%s' % (qn(table_alias), qn(name))
         else:
