@@ -8,6 +8,7 @@ class VirtualField(Field):
     """
     def __init__(self, **kwargs):
         kwargs['virtual'] = True
+        kwargs['editable'] = False
         super(VirtualField, self).__init__(**kwargs)
 
     def db_type(self, connection):

@@ -952,7 +952,7 @@ class QuerySet(object):
         """
         opts = self.model._meta
         if self.query.group_by is None:
-            field_names = [f.attname for f in opts.fields]
+            field_names = [f.attname for f in opts.fields if not f.virtual]
             self.query.add_fields(field_names, False)
             self.query.set_group_by()
 
