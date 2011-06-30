@@ -15,9 +15,7 @@ class VirtualField(Field):
         return None
 
     def contribute_to_class(self, cls, name):
-        self.set_attributes_from_name(name)
-        self.model = cls
-        cls._meta.add_field(self)
+        super(VirtualField, self).contribute_to_class(cls, name)
         # Virtual fields are descriptors; they are not handled
         # individually at instance level.
         setattr(cls, name, self)
@@ -52,6 +50,8 @@ class CompositeField(VirtualField):
         return tuple(f.db_type(connection) for f in self.fields)
 
     def contribute_to_class(self, cls, name):
+        super(CompositeField, self).contribute_to_class(cls, name)
+
         # If we are a ``unique`` field (but not a primary one),
         # register as unique_together inside the model's _meta.
         if self._unique:
@@ -62,21 +62,15 @@ class CompositeField(VirtualField):
         # get_attname_column which in turn requires fields to be ready,
         # thus we have to delay almost everything.
         def process_enclosed_fields(sender, **kwargs):
-            super(CompositeField, self).contribute_to_class(cls, name)
-
             nt_name = "%s_%s" % (cls.__name__, name)
             nt_fields = " ".join(f.name for f in self.fields)
             self.nt = namedtuple(nt_name, nt_fields)
-            setattr(cls, name, self)
+            # We have to update our column attribute once our fields are
+            # ready.
+            self.column = tuple(f.column for f in self.fields)
 
         signals.class_prepared.connect(process_enclosed_fields,
                                        sender=cls, weak=False)
-
-    def get_attname_column(self):
-        attname = self.get_attname()
-        # Again, we return a tuple of enclosed database columns.
-        column = tuple(f.column for f in self.fields)
-        return attname, column
 
     def get_enclosed_fields(self):
         return self.fields
