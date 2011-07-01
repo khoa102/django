@@ -89,6 +89,9 @@ class BaseDatabaseCreation(object):
                 ", ".join(
                     [style.SQL_FIELD(qn(opts.get_field(f).column))
                      for f in field_constraints]))
+        if opts.pk.virtual:
+            table_output.append(style.SQL_KEYWORD('PRIMARY KEY') + ' (%s)' %
+                ", ".join([style.SQL_FIELD(qn(col)) for col in opts.pk.column]))
 
         full_statement = [style.SQL_KEYWORD('CREATE TABLE') + ' ' +
                           style.SQL_TABLE(qn(opts.db_table)) + ' (']
