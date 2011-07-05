@@ -8,7 +8,7 @@ from django.forms.models import (modelform_factory, modelformset_factory,
     inlineformset_factory, BaseInlineFormSet)
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin import widgets, helpers
-from django.contrib.admin.util import quote, unquote, flatten_fieldsets, get_deleted_objects, model_format_dict
+from django.contrib.admin.util import flatten_fieldsets, get_deleted_objects, model_format_dict
 from django.contrib.admin.templatetags.admin_static import static
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_protect
@@ -31,7 +31,7 @@ from django.utils import six
 from django.utils.text import capfirst, get_text_list
 from django.utils.translation import ugettext as _
 from django.utils.translation import ungettext
-from django.utils.encoding import force_text
+from django.utils.encoding import force_text, quote, unquote
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field

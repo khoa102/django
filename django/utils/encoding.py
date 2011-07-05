@@ -5,9 +5,9 @@ import datetime
 from decimal import Decimal
 import locale
 try:
-    from urllib.parse import quote
+    from urllib.parse import quote as urllib_quote
 except ImportError:     # Python 2
-    from urllib import quote
+    from urllib import quote as urllib_quote
 import warnings
 
 from django.utils.functional import Promise
@@ -188,6 +188,42 @@ force_str.__doc__ = """\
 Apply force_text in Python 3 and force_bytes in Python 2.
 """
 
+def quote(s, unsafe_chars=""":/_#?;@&=+$,"<>%\\""", escape="_"):
+    """
+    Used in the admin and in CompositeValues to get rid of unsafe
+    characters. Similar to urllib.quote, except that the default quoting
+    is different to avoid being unquoted by the Web browser.
+    """
+    if not isinstance(s, six.string_types):
+        return s
+    res = list(s)
+    unsafe_chars += escape
+    for i in range(len(res)):
+        c = res[i]
+        if c in unsafe_chars:
+            res[i] = '%s%02X' % (escape, ord(c))
+    return "".join(res)
+
+def unquote(s, escape="_"):
+    """
+    Undo the effects of quote(). Based heavily on urllib.unquote().
+    """
+    mychr = chr
+    myatoi = int
+    list = s.split(escape)
+    res = [list[0]]
+    myappend = res.append
+    del list[0]
+    for item in list:
+        if item[1:2]:
+            try:
+                myappend(mychr(myatoi(item[:2], 16)) + item[2:])
+            except ValueError:
+                myappend(escape + item)
+        else:
+            myappend(escape + item)
+    return "".join(res)
+
 def iri_to_uri(iri):
     """
     Convert an Internationalized Resource Identifier (IRI) portion to a URI
@@ -213,7 +249,7 @@ def iri_to_uri(iri):
     # converted.
     if iri is None:
         return iri
-    return quote(force_bytes(iri), safe=b"/#%[]=:;$&()+,!?*@'~")
+    return urllib_quote(force_bytes(iri), safe=b"/#%[]=:;$&()+,!?*@'~")
 
 def filepath_to_uri(path):
     """Convert an file system path to a URI portion that is suitable for
@@ -232,7 +268,7 @@ def filepath_to_uri(path):
         return path
     # I know about `os.sep` and `os.altsep` but I want to leave
     # some flexibility for hardcoding separators.
-    return quote(force_bytes(path.replace("\\", "/")), safe=b"/~!*()'")
+    return urllib_quote(force_bytes(path.replace("\\", "/")), safe=b"/~!*()'")
 
 # The encoding of the default system locale but falls back to the
 # given fallback encoding if the encoding is unsupported by python or could
