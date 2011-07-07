@@ -1,6 +1,14 @@
+from __future__ import unicode_literals
+
 from django.db.models.fields import Field
 from collections import namedtuple
 from django.db.models import signals
+from django.utils.encoding import (force_text, python_2_unicode_compatible,
+        quote, unquote)
+from django.utils import six
+
+COMPOSITE_VALUE_SEPARATOR = ','
+COMPOSITE_VALUE_QUOTING_CHAR = '~'
 
 class VirtualField(Field):
     """
@@ -64,7 +72,7 @@ class CompositeField(VirtualField):
         def process_enclosed_fields(sender, **kwargs):
             nt_name = "%s_%s" % (cls.__name__, name)
             nt_fields = " ".join(f.name for f in self.fields)
-            self.nt = namedtuple(nt_name, nt_fields)
+            self.nt = get_composite_value_class(nt_name, nt_fields)
             # We have to update our column attribute once our fields are
             # ready.
             self.column = tuple(f.column for f in self.fields)
@@ -112,5 +120,32 @@ class CompositeField(VirtualField):
         return self.nt._make(getattr(instance, f.name, None) for f in self.fields)
 
     def __set__(self, instance, value):
+        value = self.to_python(value)
         for f, val in zip(self.nt._fields, value):
             setattr(instance, f, val)
+
+    def to_python(self, value):
+        if isinstance(value, six.string_types):
+            value = [unquote(v, escape=COMPOSITE_VALUE_QUOTING_CHAR)
+                     for v in value.split(COMPOSITE_VALUE_SEPARATOR)]
+
+        value = [f.to_python(v) for f, v in zip(self.fields, value)]
+        return value
+
+
+def get_composite_value_class(name, fields):
+    """
+    Returns a namedtuple subclass with our custom unicode representation.
+    """
+    nt = namedtuple(name, fields)
+
+    @python_2_unicode_compatible
+    class CompositeValue(nt):
+        def __str__(self):
+            return COMPOSITE_VALUE_SEPARATOR.join(
+                    quote(force_text(v),
+                          unsafe_chars=COMPOSITE_VALUE_SEPARATOR,
+                          escape=COMPOSITE_VALUE_QUOTING_CHAR)
+                    for v in self)
+
+    return CompositeValue
