@@ -78,6 +78,23 @@ class CompositeFieldTests(TestCase):
             '<Person: John Lennon>',
         ])
 
+    def test_cf_pk_deletion(self):
+        self.p1.delete()
+
+        self.assertQuerysetEqual(Person.objects.all(), [
+            '<Person: George Harrison>',
+            '<Person: Paul McCartney>',
+            '<Person: Ringo Starr>',
+        ])
+
+        qs = Person.objects.filter(full_name__in=[('George', 'Harrison'),
+                                                  ('Paul', 'McCartney')])
+        qs.delete()
+
+        self.assertQuerysetEqual(Person.objects.all(), [
+            '<Person: Ringo Starr>',
+        ])
+
     def test_composite_val_string_repr(self):
         instance = MostFieldTypes.objects.create(
                 bool_field=True,

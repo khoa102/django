@@ -120,6 +120,10 @@ class CompositeField(VirtualField):
         return self.nt._make(getattr(instance, f.name, None) for f in self.fields)
 
     def __set__(self, instance, value):
+        # Ignore attempts to set to None; deletion code does that and we
+        # don't want to throw an exception.
+        if value is None:
+            return
         value = self.to_python(value)
         for f, val in zip(self.nt._fields, value):
             setattr(instance, f, val)
