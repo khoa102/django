@@ -577,6 +577,7 @@ class ComplexSortedPerson(models.Model):
     age = models.PositiveIntegerField()
     is_employee = models.NullBooleanField()
 
+
 class PrePopulatedPostLargeSlug(models.Model):
     """
     Regression test for #15938: a large max_length for the slugfield must not
@@ -587,9 +588,11 @@ class PrePopulatedPostLargeSlug(models.Model):
     published = models.BooleanField()
     slug = models.SlugField(max_length=1000)
 
+
 class AdminOrderedField(models.Model):
     order = models.IntegerField()
     stuff = models.CharField(max_length=200)
+
 
 class AdminOrderedModelMethod(models.Model):
     order = models.IntegerField()
@@ -598,13 +601,16 @@ class AdminOrderedModelMethod(models.Model):
         return self.order
     some_order.admin_order_field = 'order'
 
+
 class AdminOrderedAdminMethod(models.Model):
     order = models.IntegerField()
     stuff = models.CharField(max_length=200)
 
+
 class AdminOrderedCallable(models.Model):
     order = models.IntegerField()
     stuff = models.CharField(max_length=200)
+
 
 @python_2_unicode_compatible
 class Report(models.Model):
@@ -623,6 +629,7 @@ class MainPrepopulated(models.Model):
                  ('option two', 'Option Two')))
     slug1 = models.SlugField()
     slug2 = models.SlugField()
+
 
 class RelatedPrepopulated(models.Model):
     parent = models.ForeignKey(MainPrepopulated)
@@ -644,6 +651,7 @@ class UnorderedObject(models.Model):
     name = models.CharField(max_length=255)
     bool = models.BooleanField(default=True)
 
+
 class UndeletableObject(models.Model):
     """
     Model whose show_delete in admin change_view has been disabled
@@ -656,3 +664,14 @@ class Simple(models.Model):
     """
     Simple model with nothing on it for use in testing
     """
+
+
+@python_2_unicode_compatible
+class PersonWithCompositePK(models.Model):
+    first_name = models.CharField(max_length=47)
+    last_name = models.CharField(max_length=47)
+
+    full_name = models.CompositeField(first_name, last_name, primary_key=True)
+
+    def __str__(self):
+        return "%s %s" % self.full_name

@@ -19,7 +19,6 @@ from django.contrib import admin
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.admin.models import LogEntry, DELETION
 from django.contrib.admin.sites import LOGIN_FORM_KEY
-from django.contrib.admin.util import quote
 from django.contrib.admin.views.main import IS_POPUP_VAR
 from django.contrib.admin.tests import AdminSeleniumWebDriverTestCase
 from django.contrib.auth import REDIRECT_FIELD_NAME
@@ -30,7 +29,7 @@ from django.template.response import TemplateResponse
 from django.test import TestCase
 from django.utils import formats, translation, unittest
 from django.utils.cache import get_max_age
-from django.utils.encoding import iri_to_uri, force_bytes
+from django.utils.encoding import force_bytes, force_text, iri_to_uri, quote
 from django.utils.html import escape
 from django.utils.http import urlencode
 from django.utils import six
@@ -46,7 +45,7 @@ from .models import (Article, BarAccount, CustomArticle, EmptyModel, FooAccount,
     OtherStory, ComplexSortedPerson, Parent, Child, AdminOrderedField,
     AdminOrderedModelMethod, AdminOrderedAdminMethod, AdminOrderedCallable,
     Report, MainPrepopulated, RelatedPrepopulated, UnorderedObject,
-    Simple, UndeletableObject)
+    Simple, UndeletableObject, PersonWithCompositePK)
 
 
 ERROR_MESSAGE = "Please enter the correct username and password \
@@ -3693,3 +3692,153 @@ class AdminViewLogoutTest(TestCase):
         self.assertEqual(response.template_name, 'admin/login.html')
         self.assertEqual(response.request['PATH_INFO'], '/test_admin/admin/')
         self.assertContains(response, '<input type="hidden" name="next" value="/test_admin/admin/" />')
+
+
+class AdminCompositePrimaryKeysTests(TestCase):
+    """
+    Checks that all supported admin functionality plays with composite primary
+    keys nicely.
+    """
+    fixtures = ['admin-views-users.xml']
+    urls = "regressiontests.admin_views.urls"
+
+    def setUp(self):
+        self.client.login(username='super', password='secret')
+
+    def tearDown(self):
+        self.client.logout()
+
+    def insert_some_items(self):
+        self.bobby = PersonWithCompositePK.objects.create(
+            first_name="Robert,~'); DROP TABLE Students;--",
+            last_name="Bobby Tables"
+        )
+        self.elaine = PersonWithCompositePK.objects.create(
+            first_name="Help I'm trapped",
+            last_name="In a driver's license factory"
+        )
+
+    def test_add_save(self):
+        """
+        Test creation of objects with composite primary keys using "Save".
+        """
+        data = {
+            "first_name": "Robert,~'); DROP TABLE Students;--",
+            "last_name": "Bobby Tables",
+            "_save": "",
+        }
+        response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/add/", data, follow=True)
+        self.assertRedirects(response, "/test_admin/admin/admin_views/personwithcompositepk/")
+        self.assertContains(response, "was added successfully")
+
+    def test_add_another(self):
+        """
+        Test creation of objects with composite primary keys using "Save and add another".
+        """
+        data = {
+            "first_name": "Robert,~'); DROP TABLE Students;--",
+            "last_name": "Bobby Tables",
+            "_addanother": "",
+        }
+        response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/add/", data, follow=True)
+        self.assertRedirects(response, "/test_admin/admin/admin_views/personwithcompositepk/add/")
+        self.assertContains(response, "was added successfully")
+
+    def test_add_continue(self):
+        """
+        Test creation of objects with composite primary keys using "Save and continue".
+        """
+        data = {
+            "first_name": "Robert,~'); DROP TABLE Students;--",
+            "last_name": "Bobby Tables",
+            "_continue": "",
+        }
+        response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/add/", data, follow=True)
+        expected_pk = iri_to_uri(quote(force_text(PersonWithCompositePK.objects.all()[0].pk)))
+        self.assertRedirects(response, "/test_admin/admin/admin_views/personwithcompositepk/%s/" % expected_pk)
+        self.assertContains(response, "was added successfully")
+
+    def test_changelist_display(self):
+        """
+        Verify that the changelist displays fine for this model.
+        """
+        self.insert_some_items()
+        response = self.client.get("/test_admin/admin/admin_views/personwithcompositepk/")
+        self.assertContains(response, escape("%s %s" % self.elaine.full_name))
+        self.assertContains(response, escape("%s %s" % self.bobby.full_name))
+
+    def test_change_save(self):
+        """
+        Verifies that clicking "Save" in Change form works.
+        """
+        self.insert_some_items()
+        data = {
+            "first_name": "someone",
+            "last_name": "Bobby Tables",
+            "_save": "",
+        }
+        bobby_url = iri_to_uri(quote(force_text(self.bobby.pk)))
+
+        response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/%s/" % bobby_url, data, follow=True)
+        self.assertRedirects(response, "/test_admin/admin/admin_views/personwithcompositepk/")
+        # Since we saved an instance with a modified explicit PK, we actually
+        # created a new one.
+        self.assertQuerysetEqual(PersonWithCompositePK.objects.order_by("last_name", "first_name"), [
+            "<PersonWithCompositePK: Robert,~'); DROP TABLE Students;-- Bobby Tables>",
+            "<PersonWithCompositePK: someone Bobby Tables>",
+            "<PersonWithCompositePK: Help I'm trapped In a driver's license factory>",
+        ])
+
+    def test_delete_instance(self):
+        """
+        Tests deletion via a single instance.
+        """
+        self.insert_some_items()
+
+        bobby_url = iri_to_uri(quote(force_text(self.bobby.pk)))
+        bobby_title = escape("%s %s" % self.bobby.pk)
+
+        # Verify we get the confirmation page.
+        response = self.client.get("/test_admin/admin/admin_views/personwithcompositepk/%s/delete/" % bobby_url)
+        self.assertContains(response, bobby_title)
+
+        # Now we verify the actual deletion.
+        data = {
+            "submit": "Yes, I'm sure",
+            "post": "yes",
+        }
+        response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/%s/delete/" % bobby_url, data, follow=True)
+        self.assertRedirects(response, "/test_admin/admin/admin_views/personwithcompositepk/")
+        self.assertQuerysetEqual(PersonWithCompositePK.objects.all(), [
+            "<PersonWithCompositePK: Help I'm trapped In a driver's license factory>",
+        ])
+
+    def test_delete_action(self):
+        """
+        Tests deletion using the predefined admin action.
+        """
+        self.insert_some_items()
+
+        # Check the confirmation page.
+        bobby_title = escape("%s %s" % self.bobby.pk)
+        bobby_pk = force_text(self.bobby.pk)
+        bobby_url = iri_to_uri(quote(bobby_pk))
+        data = {
+            "_selected_action": [bobby_pk],
+            "index": 0,
+            "action": "delete_selected",
+        }
+        response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/", data)
+        # The response should contain both the description and a link.
+        self.assertContains(response, bobby_title)
+        self.assertContains(response, bobby_url)
+
+        # Let's do it.
+        data["_selected_action"] = bobby_pk
+        data["post"] = "yes"
+        data["submit"] = "Yes, I'm sure"
+        response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/", data, follow=True)
+        self.assertRedirects(response, "/test_admin/admin/admin_views/personwithcompositepk/")
+        self.assertQuerysetEqual(PersonWithCompositePK.objects.all(), [
+            "<PersonWithCompositePK: Help I'm trapped In a driver's license factory>",
+        ])

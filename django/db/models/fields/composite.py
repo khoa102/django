@@ -85,6 +85,7 @@ class CompositeField(VirtualField):
 
     def get_prep_lookup(self, lookup_type, value):
         if lookup_type == 'exact':
+            value = self.to_python(value)
             if len(value) != len(self.fields):
                 raise ValueError("%s lookup arguments must have length %d; "
                         "the length of %r is %d." % (self.name, len(self.fields),

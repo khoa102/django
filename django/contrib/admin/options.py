@@ -803,7 +803,8 @@ class ModelAdmin(BaseModelAdmin):
             self.message_user(request, msg)
             if continue_editing_url is None:
                 continue_editing_url = 'admin:%s_%s_change' % (app_label, model_name)
-            url = reverse(continue_editing_url, args=(quote(pk_value),),
+            url = reverse(continue_editing_url,
+                          args=(quote(force_text(pk_value)),),
                           current_app=site_name)
             if "_popup" in request.POST:
                 url += "?_popup=1"

@@ -81,7 +81,8 @@ def get_deleted_objects(objs, opts, user, admin_site, using):
                                 % (admin_site.name,
                                    opts.app_label,
                                    opts.object_name.lower()),
-                                None, (quote(obj._get_pk_val()),))
+                                None,
+                                (quote(force_text(obj._get_pk_val())),))
             p = '%s.%s' % (opts.app_label,
                            opts.get_delete_permission())
             if not user.has_perm(p):

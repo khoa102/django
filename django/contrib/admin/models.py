@@ -60,7 +60,11 @@ class LogEntry(models.Model):
 
     def get_edited_object(self):
         "Returns the edited object represented by this log entry"
-        return self.content_type.get_object_for_this_type(pk=self.object_id)
+        # We need to transform the ID into its Python representation to
+        # support composite fields.
+        model = self.content_type.model_class()
+        object_id = model._meta.pk.to_python(self.object_id)
+        return self.content_type.get_object_for_this_type(pk=object_id)
 
     def get_admin_url(self):
         """
