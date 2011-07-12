@@ -620,6 +620,12 @@ Of course, you can customize the names of these fields using the
 that if you set this option, it is your responsibility to make sure the
 supplied fields have correct types and constraints.
 
+Also be aware that, as with any explicitly set primary key field, as soon
+as you modify the primary key value, even if it is in an already existing
+instance, saving will create a new one or update a different row if that
+value already exists in the database. This may be confusing in the admin
+if you hit “Update” and a new row is added.
+
 Models across files
 -------------------
 
