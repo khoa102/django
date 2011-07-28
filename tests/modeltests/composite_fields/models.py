@@ -18,6 +18,7 @@ class Person(models.Model):
     def __str__(self):
         return '%s %s' % (self.first_name, self.last_name)
 
+
 class MostFieldTypes(models.Model):
     """
     This one is supposed to contain most of the various field types
@@ -38,3 +39,26 @@ class MostFieldTypes(models.Model):
     all_fields = models.CompositeField(bool_field, char_field, date_field,
                                        dtime_field, time_field, dec_field,
                                        float_field, int_field)
+
+
+class WeekDay(models.Model):
+    pos = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=10)
+
+
+class Sentence(models.Model):
+    sentence = models.CharField(max_length=128)
+
+
+@python_2_unicode_compatible
+class SentenceFreq(models.Model):
+    weekday = models.ForeignKey(WeekDay, db_column='wd')
+    sentence = models.ForeignKey(Sentence)
+    score = models.FloatField()
+
+    composite_key = models.CompositeField(
+        weekday, sentence, primary_key=True)
+
+    def __str__(self):
+        return self.sentence.sentence.replace('?', self.weekday.name)
+

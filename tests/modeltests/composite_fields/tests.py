@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.db.models.fields import FieldDoesNotExist
 from django.utils.encoding import force_text
 
-from .models import Person, MostFieldTypes
+from .models import Person, MostFieldTypes, WeekDay, Sentence, SentenceFreq
 
 class CompositeFieldTests(TestCase):
 
@@ -132,3 +132,14 @@ class CompositeFieldTests(TestCase):
         fetched = MostFieldTypes.objects.get(all_fields=unpacked)
         self.assertEqual(fetched.pk, instance.pk)
         self.assertEqual(fetched.all_fields, instance.all_fields)
+
+    def test_composite_of_related_fields(self):
+        tuesday = WeekDay(name='Tuesday', pos=2)
+        tuesday.save()
+        big_day = Sentence(sentence='? is the big day')
+        big_day.save()
+        tues_big_day = SentenceFreq(
+            weekday=tuesday, sentence=big_day, score=210)
+        tues_big_day.save()
+        self.assertEqual(tues_big_day.pk, (tuesday, big_day))
+

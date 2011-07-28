@@ -141,6 +141,11 @@ class CompositeField(VirtualField):
         return value
 
 
+def maybe_id(val):
+    if hasattr(val, 'pk'):
+        return val.pk
+    return val
+
 def get_composite_value_class(name, fields):
     """
     Returns a namedtuple subclass with our custom unicode representation.
@@ -151,7 +156,7 @@ def get_composite_value_class(name, fields):
     class CompositeValue(nt):
         def __str__(self):
             return COMPOSITE_VALUE_SEPARATOR.join(
-                    quote(force_text(v),
+                    quote(force_text(maybe_id(v)),
                           unsafe_chars=COMPOSITE_VALUE_SEPARATOR,
                           escape=COMPOSITE_VALUE_QUOTING_CHAR)
                     for v in self)

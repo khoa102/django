@@ -27,7 +27,8 @@ from .models import (Article, Chapter, Account, Media, Child, Parent, Picture,
     Album, Question, Answer, ComplexSortedPerson, PrePopulatedPostLargeSlug,
     AdminOrderedField, AdminOrderedModelMethod, AdminOrderedAdminMethod,
     AdminOrderedCallable, Report, Color2, UnorderedObject, MainPrepopulated,
-    RelatedPrepopulated, UndeletableObject, Simple, PersonWithCompositePK)
+    RelatedPrepopulated, UndeletableObject, Simple, PersonWithCompositePK,
+    WeekDay, Sentence, SentenceFreq)
 
 
 def callable_year(dt_value):
@@ -661,6 +662,9 @@ site.register(AdminOrderedCallable, AdminOrderedCallableAdmin)
 site.register(Color2, CustomTemplateFilterColorAdmin)
 site.register(Simple, AttributeErrorRaisingAdmin)
 site.register(PersonWithCompositePK)
+site.register(WeekDay)
+site.register(Sentence)
+site.register(SentenceFreq)
 
 # Register core models we need in our tests
 from django.contrib.auth.models import User, Group
