@@ -397,15 +397,20 @@ class SQLCompiler(object):
             elif get_order_dir(field)[0] not in self.query.extra_select:
                 # 'col' is of the form 'field' or 'field1__field2' or
                 # '-field1__field2__field', etc.
-                for table, col, order in self.find_ordering_name(field,
+                for table, cols, order in self.find_ordering_name(field,
                         self.query.model._meta, default_order=asc):
-                    if (table, col) not in processed_pairs:
-                        elt = '%s.%s' % (qn(table), qn2(col))
-                        processed_pairs.add((table, col))
-                        if distinct and elt not in select_aliases:
-                            ordering_aliases.append(elt)
-                        result.append('%s %s' % (elt, order))
-                        group_by.append((elt, []))
+                    if not isinstance(cols, (tuple, list)):
+                        # Normalize to a tuple of columns as returned by
+                        # CompositeFields.
+                        cols = (cols,)
+                    for col in cols:
+                        if (table, col) not in processed_pairs:
+                            elt = '%s.%s' % (qn(table), qn2(col))
+                            processed_pairs.add((table, col))
+                            if distinct and elt not in select_aliases:
+                                ordering_aliases.append(elt)
+                            result.append('%s %s' % (elt, order))
+                            group_by.append((elt, []))
             else:
                 elt = qn2(col)
                 if distinct and col not in select_aliases:
