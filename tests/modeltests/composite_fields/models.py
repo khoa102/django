@@ -61,4 +61,3 @@ class SentenceFreq(models.Model):
 
     def __str__(self):
         return self.sentence.sentence.replace('?', self.weekday.name)
-

@@ -3867,5 +3867,3 @@ class AdminCompositePrimaryKeysTests(TestCase):
         item_url = posixpath.join(list_url, href)
         item_response = self.client.get(item_url)
         self.assertEqual(item_response.status_code, 200)
-
-

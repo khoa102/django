@@ -121,7 +121,7 @@ class CompositeField(VirtualField):
         if instance is None:
             raise AttributeError("%s can only be retrieved via instance."
                                  % self.name)
-        return self.nt._make(getattr(instance, f.name, None) for f in self.fields)
+        return self.nt._make(getattr(instance, f.attname, None) for f in self.fields)
 
     def __set__(self, instance, value):
         # Ignore attempts to set to None; deletion code does that and we
@@ -129,7 +129,7 @@ class CompositeField(VirtualField):
         if value is None:
             return
         value = self.to_python(value)
-        for f, val in zip(self.nt._fields, value):
+        for f, val in zip([f.attname for f in self.fields], value):
             setattr(instance, f, val)
 
     def to_python(self, value):
@@ -141,11 +141,6 @@ class CompositeField(VirtualField):
         return value
 
 
-def maybe_id(val):
-    if hasattr(val, 'pk'):
-        return val.pk
-    return val
-
 def get_composite_value_class(name, fields):
     """
     Returns a namedtuple subclass with our custom unicode representation.
@@ -156,7 +151,7 @@ def get_composite_value_class(name, fields):
     class CompositeValue(nt):
         def __str__(self):
             return COMPOSITE_VALUE_SEPARATOR.join(
-                    quote(force_text(maybe_id(v)),
+                    quote(force_text(v),
                           unsafe_chars=COMPOSITE_VALUE_SEPARATOR,
                           escape=COMPOSITE_VALUE_QUOTING_CHAR)
                     for v in self)

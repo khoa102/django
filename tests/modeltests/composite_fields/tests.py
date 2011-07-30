@@ -141,5 +141,4 @@ class CompositeFieldTests(TestCase):
         tues_big_day = SentenceFreq(
             weekday=tuesday, sentence=big_day, score=210)
         tues_big_day.save()
-        self.assertEqual(tues_big_day.pk, (tuesday, big_day))
-
+        self.assertEqual(tues_big_day.pk, (tuesday.pk, big_day.pk))
