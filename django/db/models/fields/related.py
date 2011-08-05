@@ -1,10 +1,12 @@
 from operator import attrgetter
+import copy
 
 from django.db import connection, router
 from django.db.backends import util
 from django.db.models import signals, get_model
 from django.db.models.fields import (AutoField, Field, IntegerField,
     PositiveIntegerField, PositiveSmallIntegerField, FieldDoesNotExist)
+from django.db.models.fields.composite import CompositeField
 from django.db.models.related import RelatedObject
 from django.db.models.query import QuerySet
 from django.db.models.query_utils import QueryWrapper
@@ -994,6 +996,10 @@ class ForeignKey(RelatedField, Field):
         if 'db_index' not in kwargs:
             kwargs['db_index'] = True
 
+        self.serialize_aux = kwargs.pop('serialize', True)
+        kwargs['serialize'] = False
+        kwargs['virtual'] = True
+
         kwargs['rel'] = rel_class(to, to_field,
             related_name=kwargs.pop('related_name', None),
             limit_choices_to=kwargs.pop('limit_choices_to', None),
@@ -1063,6 +1069,31 @@ class ForeignKey(RelatedField, Field):
                 cls._meta.related_fkey_lookups.append(self.rel.limit_choices_to)
         if self.rel.field_name is None:
             self.rel.field_name = cls._meta.pk.name
+        self.create_aux_field(self.rel.get_related_field(), self.attname)
+
+    def create_aux_field(self, field, name):
+        # We follow ForeignKeys down one level to reach the actual field
+        # we're cloning.
+        if isinstance(field, ForeignKey):
+            field = field.get_enclosed_fields()[0]
+        aux_field = copy.deepcopy(field)
+        # Convert AutoFields to IntegerFields -- there can't be more than
+        # one of them.
+        if isinstance(field, AutoField):
+            aux_field.__class__ = IntegerField
+        aux_field.primary_key = False
+        aux_field._choices = None
+        aux_field.formfield = lambda *a, **kw: None
+        aux_field._unique = self.unique
+        aux_field.serialize = self.serialize_aux
+        # For backwards compatibility, we have to forward db_column to the
+        # aux field.
+        if self.db_column:
+            aux_field.db_column = self.db_column
+        self.model.add_to_class(name, aux_field)
+
+    def get_enclosed_fields(self):
+        return self.model._meta.get_field_by_name(self.attname)[0:1]
 
     def formfield(self, **kwargs):
         db = kwargs.pop('using', None)
