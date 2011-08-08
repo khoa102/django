@@ -28,7 +28,6 @@ DEFAULT_NAMES = ('verbose_name', 'verbose_name_plural', 'db_table', 'ordering',
 class Options(object):
     def __init__(self, meta, app_label=None):
         self.local_fields, self.local_many_to_many = [], []
-        self.virtual_fields = []
         self.module_name, self.verbose_name = None, None
         self.verbose_name_plural = None
         self.db_table = ''
@@ -156,11 +155,7 @@ class Options(object):
             if hasattr(self, '_m2m_cache'):
                 del self._m2m_cache
         else:
-            if field.virtual:
-                target = self.virtual_fields
-            else:
-                target = self.local_fields
-            target.insert(bisect(target, field), field)
+            self.local_fields.insert(bisect(self.local_fields, field), field)
             self.setup_pk(field)
             if hasattr(self, '_field_cache'):
                 del self._field_cache
@@ -230,6 +225,25 @@ class Options(object):
         return self._field_name_cache
     fields = property(_fields)
 
+    def _local_concrete(self):
+        """
+        Getter for self.local_concrete, a shorthand for local fields that
+        are not virtual.
+
+        For use in cases where only concrete fields are useful, like
+        serialization.
+        """
+        return [f for f in self.local_fields if not f.virtual]
+    local_concrete = property(_local_concrete)
+
+    def _concrete_fields(self):
+        """
+        Getter for all (including inherited) concrete fields for this
+        model.
+        """
+        return [f for f in self.fields if not f.virtual]
+    concrete_fields = property(_concrete_fields)
+
     def get_fields_with_model(self):
         """
         Returns a sequence of (field, model) pairs for all fields. The "model"
@@ -246,14 +260,11 @@ class Options(object):
         cache = []
         for parent in self.parents:
             for field, model in parent._meta.get_fields_with_model():
-                if field.virtual:
-                    continue
                 if model:
                     cache.append((field, model))
                 else:
                     cache.append((field, parent))
         cache.extend([(f, None) for f in self.local_fields])
-        cache.extend([(f, None) for f in self.virtual_fields])
         self._field_cache = tuple(cache)
         self._field_name_cache = [x for x, _ in cache]
 

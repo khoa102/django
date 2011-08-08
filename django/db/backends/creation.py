@@ -46,7 +46,7 @@ class BaseDatabaseCreation(object):
         table_output = []
         pending_references = {}
         qn = self.connection.ops.quote_name
-        for f in opts.local_fields:
+        for f in opts.local_concrete:
             col_type = f.db_type(connection=self.connection)
             tablespace = f.db_tablespace or opts.db_tablespace
             if col_type is None:
@@ -179,9 +179,10 @@ class BaseDatabaseCreation(object):
             return []
         output = []
         for f in model._meta.local_fields:
-            output.extend(self.sql_indexes_for_single_field(model, f, style))
-        for f in model._meta.virtual_fields:
-            output.extend(self.sql_indexes_for_virtual_field(model, f, style))
+            if f.virtual:
+                output.extend(self.sql_indexes_for_virtual_field(model, f, style))
+            else:
+                output.extend(self.sql_indexes_for_single_field(model, f, style))
         return output
 
     def sql_indexes_for_single_field(self, model, f, style):

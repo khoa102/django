@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
+from django.utils.encoding import python_2_unicode_compatible, force_text
 
 
 @python_2_unicode_compatible
@@ -19,6 +19,7 @@ class Person(models.Model):
         return '%s %s' % (self.first_name, self.last_name)
 
 
+@python_2_unicode_compatible
 class MostFieldTypes(models.Model):
     """
     This one is supposed to contain most of the various field types
@@ -39,6 +40,23 @@ class MostFieldTypes(models.Model):
     all_fields = models.CompositeField(bool_field, char_field, date_field,
                                        dtime_field, time_field, dec_field,
                                        float_field, int_field)
+
+    class Meta:
+        ordering = ('char_field',)
+
+    def __str__(self):
+        return 'char: %s; dtime: %r; int: %r' % (self.char_field,
+                                                 self.dtime_field,
+                                                 self.int_field)
+
+
+@python_2_unicode_compatible
+class EvenMoreFields(MostFieldTypes):
+    extra_field = models.IntegerField()
+
+    def __str__(self):
+        super_text = force_text(super(EvenMoreFields, self))
+        return '%s; extra: %r' % (super_text, self.extra_field)
 
 
 class WeekDay(models.Model):
