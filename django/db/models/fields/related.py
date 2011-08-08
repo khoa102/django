@@ -1,5 +1,6 @@
 from operator import attrgetter
 import copy
+import types
 
 from django.db import connection, router
 from django.db.backends import util
@@ -1069,13 +1070,18 @@ class ForeignKey(RelatedField, Field):
                 cls._meta.related_fkey_lookups.append(self.rel.limit_choices_to)
         if self.rel.field_name is None:
             self.rel.field_name = cls._meta.pk.name
-        self.create_aux_field(self.rel.get_related_field(), self.attname)
+        # We can't use self.rel.get_related_field because
+        # opts.get_field_by_name results in a nasty app loading loop.
+        rel_field = cls._meta.get_field(self.rel.field_name)
+        self.create_aux_field(rel_field, self.attname)
 
     def create_aux_field(self, field, name):
         # We follow ForeignKeys down one level to reach the actual field
         # we're cloning.
         if isinstance(field, ForeignKey):
-            field = field.get_enclosed_fields()[0]
+            # Again, we can't use get_enclosed_fields which calls
+            # get_field_by_name.
+            field = field.model._meta.get_field(field.attname)
         aux_field = copy.deepcopy(field)
         # Convert AutoFields to IntegerFields -- there can't be more than
         # one of them.
@@ -1083,7 +1089,7 @@ class ForeignKey(RelatedField, Field):
             aux_field.__class__ = IntegerField
         aux_field.primary_key = False
         aux_field._choices = None
-        aux_field.formfield = lambda *a, **kw: None
+        aux_field.formfield = types.MethodType(lambda *a, **kw: None, aux_field)
         aux_field._unique = self.unique
         aux_field.serialize = self.serialize_aux
         # For backwards compatibility, we have to forward db_column to the
