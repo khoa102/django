@@ -95,14 +95,14 @@ signals.class_prepared.connect(do_pending_lookups)
 
 #HACK
 class RelatedField(object):
-    def contribute_to_class(self, cls, name):
+    def contribute_to_class(self, cls, name, mark_as_prepared=False):
         sup = super(RelatedField, self)
 
         # Store the opts for related_query_name()
         self.opts = cls._meta
 
         if hasattr(sup, 'contribute_to_class'):
-            sup.contribute_to_class(cls, name)
+            sup.contribute_to_class(cls, name, mark_as_prepared=False)
 
         if not cls._meta.abstract and self.rel.related_name:
             self.rel.related_name = self.rel.related_name % {
@@ -1075,13 +1075,25 @@ class ForeignKey(RelatedField, Field):
         rel_field = cls._meta.get_field(self.rel.field_name)
         self.create_aux_field(rel_field, self.attname)
 
-    def create_aux_field(self, field, name):
+    def create_aux_field(self, field, name, mark_as_prepared=True):
+        # If the target field is not yet prepared, we have to postpone
+        # this until it is.
+        if not field.prepared:
+            def delayed_aux_creation(sender, **kwargs):
+                self.create_aux_field(field, name,
+                                      mark_as_prepared=mark_as_prepared)
+            signals.field_prepared.connect(delayed_aux_creation,
+                                           sender=field,
+                                           weak=False)
+            return
+
         # We follow ForeignKeys down one level to reach the actual field
         # we're cloning.
         if isinstance(field, ForeignKey):
             # Again, we can't use get_enclosed_fields which calls
             # get_field_by_name.
             field = field.model._meta.get_field(field.attname)
+
         aux_field = copy.deepcopy(field)
         # Convert AutoFields to IntegerFields -- there can't be more than
         # one of them.
@@ -1096,6 +1108,15 @@ class ForeignKey(RelatedField, Field):
         # aux field.
         if self.db_column:
             aux_field.db_column = self.db_column
+
+        # Subscribe to the new field's field_prepared to mark ourselves as
+        # prepared before adding it to the model.
+        if mark_as_prepared:
+            def mark_self_prepared(sender, **kwargs):
+                self.mark_as_prepared()
+            signals.field_prepared.connect(mark_self_prepared,
+                                           sender=aux_field,
+                                           weak=False)
         self.model.add_to_class(name, aux_field)
 
     def get_enclosed_fields(self):

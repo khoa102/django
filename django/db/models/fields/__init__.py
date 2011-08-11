@@ -10,6 +10,7 @@ from itertools import tee
 
 from django.db import connection
 from django.db.models.query_utils import QueryWrapper
+from django.db.models import signals
 from django.conf import settings
 from django import forms
 from django.core import exceptions, validators
@@ -103,6 +104,7 @@ class Field(object):
         self.db_tablespace = db_tablespace or settings.DEFAULT_INDEX_TABLESPACE
         self.auto_created = auto_created
         self.virtual = virtual
+        self.prepared = False
 
         # Set db_index to True if the field has a relationship and doesn't
         # explicitly set db_index.
@@ -144,6 +146,8 @@ class Field(object):
         obj = copy.copy(self)
         if self.rel:
             obj.rel = copy.copy(self.rel)
+        # The new copy cannot be prepared until it is added to its class.
+        obj.prepared = False
         memodict[id(self)] = obj
         return obj
 
@@ -251,13 +255,19 @@ class Field(object):
         if self.verbose_name is None and self.name:
             self.verbose_name = self.name.replace('_', ' ')
 
-    def contribute_to_class(self, cls, name):
+    def contribute_to_class(self, cls, name, mark_as_prepared=True):
         self.set_attributes_from_name(name)
         self.model = cls
         cls._meta.add_field(self)
         if self.choices:
             setattr(cls, 'get_%s_display' % self.name,
                     curry(cls._get_FIELD_display, field=self))
+        if mark_as_prepared:
+            self.mark_as_prepared()
+
+    def mark_as_prepared(self):
+        self.prepared = True
+        signals.field_prepared.send(sender=self)
 
     def get_attname(self):
         return self.name
@@ -557,9 +567,10 @@ class AutoField(Field):
     def contribute_to_class(self, cls, name):
         assert not cls._meta.has_auto_field, \
                "A model can't have more than one AutoField."
-        super(AutoField, self).contribute_to_class(cls, name)
+        super(AutoField, self).contribute_to_class(cls, name, mark_as_prepared=False)
         cls._meta.has_auto_field = True
         cls._meta.auto_field = self
+        self.mark_as_prepared()
 
     def formfield(self, **kwargs):
         return None
@@ -713,7 +724,7 @@ class DateField(Field):
             return super(DateField, self).pre_save(model_instance, add)
 
     def contribute_to_class(self, cls, name):
-        super(DateField,self).contribute_to_class(cls, name)
+        super(DateField,self).contribute_to_class(cls, name, mark_as_prepared=False)
         if not self.null:
             setattr(cls, 'get_next_by_%s' % self.name,
                 curry(cls._get_next_or_previous_by_FIELD, field=self,
@@ -721,6 +732,7 @@ class DateField(Field):
             setattr(cls, 'get_previous_by_%s' % self.name,
                 curry(cls._get_next_or_previous_by_FIELD, field=self,
                       is_next=False))
+        self.mark_as_prepared()
 
     def get_prep_lookup(self, lookup_type, value):
         # For "__month", "__day", and "__week_day" lookups, convert the value

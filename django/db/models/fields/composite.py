@@ -22,11 +22,13 @@ class VirtualField(Field):
     def db_type(self, connection):
         return None
 
-    def contribute_to_class(self, cls, name):
-        super(VirtualField, self).contribute_to_class(cls, name)
+    def contribute_to_class(self, cls, name, mark_as_prepared=True):
+        super(VirtualField, self).contribute_to_class(cls, name, mark_as_prepared=False)
         # Virtual fields are descriptors; they are not handled
         # individually at instance level.
         setattr(cls, name, self)
+        if mark_as_prepared:
+            self.mark_as_prepared()
 
     def get_attname_column(self):
         return self.get_attname(), None
@@ -61,7 +63,7 @@ class CompositeField(VirtualField):
         return tuple(f.db_type(connection) for f in self.fields)
 
     def contribute_to_class(self, cls, name):
-        super(CompositeField, self).contribute_to_class(cls, name)
+        super(CompositeField, self).contribute_to_class(cls, name, mark_as_prepared=False)
 
         # If we are a ``unique`` field (but not a primary one),
         # register as unique_together inside the model's _meta.
