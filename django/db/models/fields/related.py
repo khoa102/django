@@ -95,14 +95,14 @@ signals.class_prepared.connect(do_pending_lookups)
 
 #HACK
 class RelatedField(object):
-    def contribute_to_class(self, cls, name, mark_as_prepared=False):
+    def contribute_to_class(self, cls, name):
         sup = super(RelatedField, self)
 
         # Store the opts for related_query_name()
         self.opts = cls._meta
 
         if hasattr(sup, 'contribute_to_class'):
-            sup.contribute_to_class(cls, name, mark_as_prepared=False)
+            sup.contribute_to_class(cls, name)
 
         if not cls._meta.abstract and self.rel.related_name:
             self.rel.related_name = self.rel.related_name % {
@@ -980,6 +980,7 @@ class ForeignKey(RelatedField, Field):
         'invalid': _('Model %(model)s with pk %(pk)r does not exist.')
     }
     description = _("Foreign Key (type determined by related field)")
+    prepare_after_contribute_to_class = False
 
     def __init__(self, to, to_field=None, rel_class=ManyToOneRel, **kwargs):
         try:
@@ -1070,12 +1071,15 @@ class ForeignKey(RelatedField, Field):
                 cls._meta.related_fkey_lookups.append(self.rel.limit_choices_to)
         if self.rel.field_name is None:
             self.rel.field_name = cls._meta.pk.name
+
+    def do_related_class(self, other, cls):
+        super(ForeignKey, self).do_related_class(other, cls)
         # We can't use self.rel.get_related_field because
         # opts.get_field_by_name results in a nasty app loading loop.
-        rel_field = cls._meta.get_field(self.rel.field_name)
+        rel_field = other._meta.get_field(self.rel.field_name)
         self.create_aux_field(rel_field, self.attname)
 
-    def create_aux_field(self, field, name, mark_as_prepared=True):
+    def create_aux_field(self, field, name, finish_preparation=True):
         # If the target field is not yet prepared, we have to postpone
         # this until it is.
         if not field.prepared:
@@ -1109,12 +1113,17 @@ class ForeignKey(RelatedField, Field):
         if self.db_column:
             aux_field.db_column = self.db_column
 
-        # Subscribe to the new field's field_prepared to mark ourselves as
-        # prepared before adding it to the model.
-        if mark_as_prepared:
-            def mark_self_prepared(sender, **kwargs):
-                self.mark_as_prepared()
-            signals.field_prepared.connect(mark_self_prepared,
+        # Subscribe to the new field's field_prepared to finish our
+        # preparation stage before adding it to the model.
+        if finish_preparation:
+            def finish_self_preparation(sender, **kwargs):
+                self.column = aux_field.column
+                # Normalize our column to a tuple since we're a virtual
+                # field.
+                if isinstance(self.column, basestring):
+                    self.column = (self.column,)
+                self.prepare()
+            signals.field_prepared.connect(finish_self_preparation,
                                            sender=aux_field,
                                            weak=False)
         self.model.add_to_class(name, aux_field)

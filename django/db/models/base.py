@@ -243,6 +243,8 @@ class ModelBase(type):
     def add_to_class(cls, name, value):
         if hasattr(value, 'contribute_to_class'):
             value.contribute_to_class(cls, name)
+            if getattr(value, 'prepare_after_contribute_to_class', False):
+                value.prepare()
         else:
             setattr(cls, name, value)
 

@@ -22,13 +22,11 @@ class VirtualField(Field):
     def db_type(self, connection):
         return None
 
-    def contribute_to_class(self, cls, name, mark_as_prepared=True):
-        super(VirtualField, self).contribute_to_class(cls, name, mark_as_prepared=False)
+    def contribute_to_class(self, cls, name):
+        super(VirtualField, self).contribute_to_class(cls, name)
         # Virtual fields are descriptors; they are not handled
         # individually at instance level.
         setattr(cls, name, self)
-        if mark_as_prepared:
-            self.mark_as_prepared()
 
     def get_attname_column(self):
         return self.get_attname(), None
@@ -53,6 +51,9 @@ class CompositeField(VirtualField):
     """
     Virtual field type enclosing several atomic fields into one.
     """
+
+    prepare_after_contribute_to_class = False
+
     def __init__(self, *fields, **kwargs):
         self.fields = fields
         super(CompositeField, self).__init__(**kwargs)
@@ -63,7 +64,7 @@ class CompositeField(VirtualField):
         return tuple(f.db_type(connection) for f in self.fields)
 
     def contribute_to_class(self, cls, name):
-        super(CompositeField, self).contribute_to_class(cls, name, mark_as_prepared=False)
+        super(CompositeField, self).contribute_to_class(cls, name)
 
         # If we are a ``unique`` field (but not a primary one),
         # register as unique_together inside the model's _meta.

@@ -85,10 +85,12 @@ class BaseDatabaseCreation(object):
                     field_output.extend(ref_output)
             table_output.append(' '.join(field_output))
         for field_constraints in opts.unique_together:
+            field_columns = [opts.get_field(f).column for f in field_constraints]
+            column_tuples = [(col,) if isinstance(col, basestring) else col
+                             for col in field_columns]
             table_output.append(style.SQL_KEYWORD('UNIQUE') + ' (%s)' %
-                ", ".join(
-                    [style.SQL_FIELD(qn(opts.get_field(f).column))
-                     for f in field_constraints]))
+                ", ".join([style.SQL_FIELD(qn(col))
+                           for cols in column_tuples for col in cols]))
         if opts.pk.virtual:
             table_output.append(style.SQL_KEYWORD('PRIMARY KEY') + ' (%s)' %
                 ", ".join([style.SQL_FIELD(qn(col)) for col in opts.pk.column]))
