@@ -1637,10 +1637,8 @@ class RawQuerySet(object):
         """
         if not hasattr(self, '_model_fields'):
             converter = connections[self.db].introspection.table_name_converter
-            self._model_fields = {}
-            for field in self.model._meta.fields:
-                name, column = field.get_attname_column()
-                self._model_fields[converter(column)] = field
+            self._model_fields = dict((converter(field.column), field)
+                                      for field in self.model._meta.fields)
         return self._model_fields
 
 
