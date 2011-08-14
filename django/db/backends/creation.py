@@ -84,13 +84,17 @@ class BaseDatabaseCreation(object):
                 else:
                     field_output.extend(ref_output)
             table_output.append(' '.join(field_output))
+        # Gather all field tuples from unique_together and all unique
+        # virtual fields.
+        unique_togethers = []
         for field_constraints in opts.unique_together:
-            field_columns = [opts.get_field(f).column for f in field_constraints]
-            column_tuples = [(col,) if isinstance(col, basestring) else col
-                             for col in field_columns]
+            unique_togethers.append([opts.get_field(f) for f in field_constraints])
+        unique_togethers += [(f,) for f in opts.local_fields
+                             if f.virtual and f.unique and not f.primary_key]
+        for fields in unique_togethers:
             table_output.append(style.SQL_KEYWORD('UNIQUE') + ' (%s)' %
                 ", ".join([style.SQL_FIELD(qn(col))
-                           for cols in column_tuples for col in cols]))
+                           for f in fields for col in f.columns if col is not None]))
         if opts.pk.virtual:
             table_output.append(style.SQL_KEYWORD('PRIMARY KEY') + ' (%s)' %
                 ", ".join([style.SQL_FIELD(qn(col)) for col in opts.pk.column]))

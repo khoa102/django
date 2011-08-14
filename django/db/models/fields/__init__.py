@@ -250,14 +250,22 @@ class Field(object):
             return None
 
     @property
+    def column(self):
+        if len(self.columns) > 1:
+            raise exceptions.FieldError("Field %s spans multiple columns."
+                                        % (self.name,))
+        return self.columns[0]
+
+    @property
     def unique(self):
         return self._unique or self.primary_key
 
     def set_attributes_from_name(self, name):
         if not self.name:
             self.name = name
-        self.attname, self.column = self.get_attname_column()
-        if self.verbose_name is None and self.name:
+        self.attname = self.get_attname()
+        self.columns = self.get_columns()
+        if self.verbose_name is None and name:
             self.verbose_name = self.name.replace('_', ' ')
 
     def contribute_to_class(self, cls, name):
@@ -275,10 +283,10 @@ class Field(object):
     def get_attname(self):
         return self.name
 
-    def get_attname_column(self):
-        attname = self.get_attname()
-        column = self.db_column or attname
-        return attname, column
+    def get_columns(self):
+        if self.db_column:
+            return (self.db_column,)
+        return (self.attname,)
 
     def get_cache_name(self):
         return '_%s_cache' % self.name

@@ -28,8 +28,8 @@ class VirtualField(Field):
         # individually at instance level.
         setattr(cls, name, self)
 
-    def get_attname_column(self):
-        return self.get_attname(), None
+    def get_columns(self):
+        return None
 
     # XXX: Abstraction artifact: Virtual fields in general don't enclose
     # any basic fields. However, the only actual implementation
@@ -66,22 +66,15 @@ class CompositeField(VirtualField):
     def contribute_to_class(self, cls, name):
         super(CompositeField, self).contribute_to_class(cls, name)
 
-        # If we are a ``unique`` field (but not a primary one),
-        # register as unique_together inside the model's _meta.
-        if self._unique:
-            cls._meta.unique_together.append(tuple(f.name for f in self.fields))
-
         # We can process the fields only after they've been added to the
-        # model class. Parent's contribute_to_class calls
-        # get_attname_column which in turn requires fields to be ready,
-        # thus we have to delay almost everything.
+        # model class.
         def process_enclosed_fields(sender, **kwargs):
             nt_name = "%s_%s" % (cls.__name__, name)
             nt_fields = " ".join(f.name for f in self.fields)
             self.nt = get_composite_value_class(nt_name, nt_fields)
             # We have to update our column attribute once our fields are
             # ready.
-            self.column = tuple(f.column for f in self.fields)
+            self.columns = tuple(col for f in self.fields for col in f.columns)
 
         signals.class_prepared.connect(process_enclosed_fields,
                                        sender=cls, weak=False)

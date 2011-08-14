@@ -1077,7 +1077,12 @@ class ForeignKey(RelatedField, Field):
         # We can't use self.rel.get_related_field because
         # opts.get_field_by_name results in a nasty app loading loop.
         rel_field = other._meta.get_field(self.rel.field_name)
-        self.create_aux_field(rel_field, self.attname)
+        if self.model._meta.abstract:
+            # We don't add auxiliary fields to abstract models; they get
+            # added to concrete subclasses.
+            self.prepare()
+        else:
+            self.create_aux_field(rel_field, self.attname)
 
     def create_aux_field(self, field, name, finish_preparation=True):
         # If the target field is not yet prepared, we have to postpone
@@ -1103,6 +1108,7 @@ class ForeignKey(RelatedField, Field):
         # one of them.
         if isinstance(field, AutoField):
             aux_field.__class__ = IntegerField
+        aux_field.name = None
         aux_field.primary_key = False
         aux_field._choices = None
         aux_field.formfield = types.MethodType(lambda *a, **kw: None, aux_field)
@@ -1117,11 +1123,7 @@ class ForeignKey(RelatedField, Field):
         # preparation stage before adding it to the model.
         if finish_preparation:
             def finish_self_preparation(sender, **kwargs):
-                self.column = aux_field.column
-                # Normalize our column to a tuple since we're a virtual
-                # field.
-                if isinstance(self.column, basestring):
-                    self.column = (self.column,)
+                self.columns = aux_field.columns
                 self.prepare()
             signals.field_prepared.connect(finish_self_preparation,
                                            sender=aux_field,
