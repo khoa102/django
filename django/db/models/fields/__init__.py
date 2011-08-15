@@ -242,10 +242,16 @@ class Field(object):
         # mapped to one of the built-in Django field types. In this case, you
         # can implement db_type() instead of get_internal_type() to specify
         # exactly which wacky database column type you want to use.
-        data = DictWrapper(self.__dict__, connection.ops.quote_name, "qn_")
         try:
-            return (connection.creation.data_types[self.get_internal_type()]
-                    % data)
+            type_ = connection.creation.data_types[self.get_internal_type()]
+            data = DictWrapper(self.__dict__, connection.ops.quote_name, "qn_")
+            # We need to handle the column attribute specially since it is
+            # a property and not part of self.__dict__. We only look it up
+            # when this substitution is required to support things like
+            # IntegerField().db_type()
+            if type_.count('%s(column)'):
+                data['column'] = self.column
+            return type_ % data
         except KeyError:
             return None
 

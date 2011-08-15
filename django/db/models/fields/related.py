@@ -998,8 +998,6 @@ class ForeignKey(RelatedField, Field):
         if 'db_index' not in kwargs:
             kwargs['db_index'] = True
 
-        self.serialize_aux = kwargs.pop('serialize', True)
-        kwargs['serialize'] = False
         kwargs['virtual'] = True
 
         kwargs['rel'] = rel_class(to, to_field,
@@ -1112,8 +1110,10 @@ class ForeignKey(RelatedField, Field):
         aux_field.primary_key = False
         aux_field._choices = None
         aux_field.formfield = types.MethodType(lambda *a, **kw: None, aux_field)
-        aux_field._unique = self.unique
-        aux_field.serialize = self.serialize_aux
+        aux_field._unique = False
+        aux_field.db_index = False
+        aux_field.serialize = False
+        aux_field.null = self.null
         # For backwards compatibility, we have to forward db_column to the
         # aux field.
         if self.db_column:
@@ -1146,21 +1146,6 @@ class ForeignKey(RelatedField, Field):
         }
         defaults.update(kwargs)
         return super(ForeignKey, self).formfield(**defaults)
-
-    def db_type(self, connection):
-        # The database column type of a ForeignKey is the column type
-        # of the field to which it points. An exception is if the ForeignKey
-        # points to an AutoField/PositiveIntegerField/PositiveSmallIntegerField,
-        # in which case the column type is simply that of an IntegerField.
-        # If the database needs similar types for key fields however, the only
-        # thing we can do is making AutoField an IntegerField.
-        rel_field = self.rel.get_related_field()
-        if (isinstance(rel_field, AutoField) or
-                (not connection.features.related_fields_match_type and
-                isinstance(rel_field, (PositiveIntegerField,
-                                       PositiveSmallIntegerField)))):
-            return IntegerField().db_type(connection=connection)
-        return rel_field.db_type(connection=connection)
 
 
 class OneToOneField(ForeignKey):
