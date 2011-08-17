@@ -39,6 +39,9 @@ class BaseDatabaseCreation(object):
         Returns the SQL required to create a single model, as a tuple of:
             (list_of_sql, pending_references_dict)
         """
+        # To avoid a circular import.
+        from django.db.models import ForeignKey
+
         opts = model._meta
         if not opts.managed or opts.proxy or opts.swapped:
             return [], {}
@@ -75,14 +78,6 @@ class BaseDatabaseCreation(object):
                     tablespace, inline=True)
                 if tablespace_sql:
                     field_output.append(tablespace_sql)
-            if f.rel:
-                ref_output, pending = self.sql_for_inline_foreign_key_references(
-                    f, known_models, style)
-                if pending:
-                    pending_references.setdefault(f.rel.to, []).append(
-                        (model, f))
-                else:
-                    field_output.extend(ref_output)
             table_output.append(' '.join(field_output))
         # Gather all field tuples from unique_together and all unique
         # virtual fields.
@@ -97,7 +92,20 @@ class BaseDatabaseCreation(object):
                            for f in fields for col in f.columns if col is not None]))
         if opts.pk.virtual:
             table_output.append(style.SQL_KEYWORD('PRIMARY KEY') + ' (%s)' %
-                ", ".join([style.SQL_FIELD(qn(col)) for col in opts.pk.column]))
+                ", ".join([style.SQL_FIELD(qn(col)) for col in opts.pk.columns]))
+
+        # Handle all ForeignKey references present in this model.
+        for f in opts.local_fields:
+            if not isinstance(f, ForeignKey):
+                continue
+            ref_output, pending = self.sql_for_inline_foreign_key_references(f, known_models, style)
+            if pending:
+                pending_references.setdefault(f.rel.to, []).append((model, f))
+            else:
+                table_output.append(style.SQL_KEYWORD('FOREIGN KEY') + ' (' +
+                    ", ".join(style.SQL_FIELD(qn(col)) for col in f.columns) + ') ' +
+                    " ".join(ref_output)
+                )
 
         full_statement = [style.SQL_KEYWORD('CREATE TABLE') + ' ' +
                           style.SQL_TABLE(qn(opts.db_table)) + ' (']
