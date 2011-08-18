@@ -1551,12 +1551,17 @@ class RawQuerySet(object):
 
         # Find out which model's fields are not present in the query.
         skip = set()
-        for field in self.model._meta.fields:
+        for field in self.model._meta.concrete_fields:
             if field.attname not in model_init_field_names:
                 skip.add(field.attname)
         if skip:
-            if self.model._meta.pk.attname in skip:
+            pk = self.model._meta.pk
+            if pk.attname in skip:
                 raise InvalidQuery('Raw query must include the primary key')
+            if pk.virtual and skip.intersection(f.attname for f in
+                                                pk.get_enclosed_fields()):
+                raise InvalidQuery('Raw query must include all components '
+                                   'of the primary key')
             model_cls = deferred_class_factory(self.model, skip)
         else:
             model_cls = self.model
@@ -1564,7 +1569,7 @@ class RawQuerySet(object):
             # to use *args based model instantation. For each field of the model,
             # record the query column position matching that field.
             model_init_field_pos = []
-            for field in self.model._meta.fields:
+            for field in self.model._meta.concrete_fields:
                 model_init_field_pos.append(model_init_field_names[field.attname])
         if need_resolv_columns:
             fields = [self.model_fields.get(c, None) for c in self.columns]
@@ -1638,7 +1643,7 @@ class RawQuerySet(object):
         if not hasattr(self, '_model_fields'):
             converter = connections[self.db].introspection.table_name_converter
             self._model_fields = dict((converter(field.column), field)
-                                      for field in self.model._meta.fields)
+                                      for field in self.model._meta.concrete_fields)
         return self._model_fields
 
 
