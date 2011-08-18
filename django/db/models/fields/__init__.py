@@ -249,7 +249,7 @@ class Field(object):
             # a property and not part of self.__dict__. We only look it up
             # when this substitution is required to support things like
             # IntegerField().db_type()
-            if type_.count('%s(column)'):
+            if type_.count('%(column)s'):
                 data['column'] = self.column
             return type_ % data
         except KeyError:
