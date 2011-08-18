@@ -1082,17 +1082,24 @@ class ForeignKey(RelatedField, Field):
         else:
             self.create_aux_field(rel_field, self.attname)
 
-    def create_aux_field(self, field, name, finish_preparation=True):
+    def create_aux_field(self, field, name, finish_preparation=True,
+                         creation_counter=None):
         # If the target field is not yet prepared, we have to postpone
         # this until it is.
         if not field.prepared:
             def delayed_aux_creation(sender, **kwargs):
                 self.create_aux_field(field, name,
-                                      mark_as_prepared=mark_as_prepared)
+                                      finish_preparation=finish_preparation)
             signals.field_prepared.connect(delayed_aux_creation,
                                            sender=field,
                                            weak=False)
             return
+
+        # We have to set the new field's creation_counter to a value
+        # between ours and the next one to ensure proper ordering in
+        # _meta.fields.
+        if creation_counter is None:
+            creation_counter = self.creation_counter + 0.5
 
         # We follow ForeignKeys down one level to reach the actual field
         # we're cloning.
@@ -1114,6 +1121,7 @@ class ForeignKey(RelatedField, Field):
         aux_field.db_index = False
         aux_field.serialize = False
         aux_field.null = self.null
+        aux_field.creation_counter = creation_counter
         # For backwards compatibility, we have to forward db_column to the
         # aux field.
         if self.db_column:
