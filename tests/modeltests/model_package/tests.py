@@ -49,15 +49,19 @@ class ModelPackageTests(TestCase):
             Article.publications.through._meta.fields[1].name, 'article'
         )
         self.assertEqual(
-            Article.publications.through._meta.fields[1].get_attname_column(),
-            ('article_id', 'article_id')
+            Article.publications.through._meta.fields[1].attname, 'article_id'
         )
         self.assertEqual(
-            Article.publications.through._meta.fields[2].name, 'publication'
+            Article.publications.through._meta.fields[1].columns, ('article_id',)
         )
         self.assertEqual(
-            Article.publications.through._meta.fields[2].get_attname_column(),
-            ('publication_id', 'publication_id')
+            Article.publications.through._meta.fields[3].name, 'publication'
+        )
+        self.assertEqual(
+            Article.publications.through._meta.fields[3].attname, 'publication_id'
+        )
+        self.assertEqual(
+            Article.publications.through._meta.fields[3].columns, ('publication_id',)
         )
 
         # The oracle backend truncates the name to 'model_package_article_publ233f'.
