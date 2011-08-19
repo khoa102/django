@@ -90,7 +90,7 @@ class Field(object):
             serialize=True, unique_for_date=None, unique_for_month=None,
             unique_for_year=None, choices=None, help_text='', db_column=None,
             db_tablespace=None, auto_created=False, validators=[],
-            error_messages=None, virtual=False):
+            error_messages=None, virtual=False, auxiliary_to=None):
         self.name = name
         self.verbose_name = verbose_name
         self.primary_key = primary_key
@@ -109,6 +109,7 @@ class Field(object):
         self.db_tablespace = db_tablespace or settings.DEFAULT_INDEX_TABLESPACE
         self.auto_created = auto_created
         self.virtual = virtual
+        self.auxiliary_to = auxiliary_to
         self.prepared = False
 
         # Set db_index to True if the field has a relationship and doesn't
@@ -417,6 +418,10 @@ class Field(object):
             if callable(self.default):
                 return self.default()
             return force_text(self.default, strings_only=True)
+        if self.auxiliary_to is not None:
+            # Needed for backwards compatibility, if a ForeignKey has a
+            # default specified.
+            return self.auxiliary_to.get_default()
         if (not self.empty_strings_allowed or (self.null and
                    not connection.features.interprets_empty_strings_as_nulls)):
             return None

@@ -341,7 +341,6 @@ class Model(six.with_metaclass(ModelBase, object)):
         # keywords, or default.
 
         for field in fields_iter:
-            is_related_object = False
             # This slightly odd construct is so that we can access any
             # data-descriptor object (DeferredAttribute) without triggering its
             # __get__ method.
@@ -349,23 +348,20 @@ class Model(six.with_metaclass(ModelBase, object)):
                     isinstance(self.__class__.__dict__.get(field.attname), DeferredAttribute)):
                 # This field will be populated on request.
                 continue
+            use_attname = True
             if kwargs:
-                if isinstance(field.rel, ManyToOneRel):
+                if field.auxiliary_to is not None:
+                    # We're dealing with a ForeignKey...
                     try:
                         # Assume object instance was passed in.
-                        rel_obj = kwargs.pop(field.name)
-                        is_related_object = True
+                        val = kwargs.pop(field.auxiliary_to.name)
+                        use_attname = False
                     except KeyError:
                         try:
                             # Object instance wasn't passed in -- must be an ID.
                             val = kwargs.pop(field.attname)
                         except KeyError:
                             val = field.get_default()
-                    else:
-                        # Object instance was passed in. Special case: You can
-                        # pass in "None" for related objects if it's allowed.
-                        if rel_obj is None and field.null:
-                            val = None
                 else:
                     try:
                         val = kwargs.pop(field.attname)
@@ -377,14 +373,14 @@ class Model(six.with_metaclass(ModelBase, object)):
                         val = field.get_default()
             else:
                 val = field.get_default()
-            if is_related_object:
+            if use_attname:
+                setattr(self, field.attname, val)
+            else:
                 # If we are passed a related instance, set it using the
                 # field.name instead of field.attname (e.g. "user" instead of
                 # "user_id") so that the object gets properly cached (and type
                 # checked) by the RelatedObjectDescriptor.
-                setattr(self, field.name, rel_obj)
-            else:
-                setattr(self, field.attname, val)
+                setattr(self, field.auxiliary_to.name, val)
 
         if kwargs:
             for prop in list(kwargs):

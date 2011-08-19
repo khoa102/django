@@ -6,7 +6,8 @@ from django.db import connection, router
 from django.db.backends import util
 from django.db.models import signals, get_model
 from django.db.models.fields import (AutoField, Field, IntegerField,
-    PositiveIntegerField, PositiveSmallIntegerField, FieldDoesNotExist)
+    PositiveIntegerField, PositiveSmallIntegerField, FieldDoesNotExist,
+    NOT_PROVIDED)
 from django.db.models.fields.composite import CompositeField
 from django.db.models.related import RelatedObject
 from django.db.models.query import QuerySet
@@ -1122,6 +1123,8 @@ class ForeignKey(RelatedField, Field):
         aux_field.serialize = False
         aux_field.null = self.null
         aux_field.creation_counter = creation_counter
+        aux_field.auxiliary_to = self
+        aux_field.default = NOT_PROVIDED
         # For backwards compatibility, we have to forward db_column to the
         # aux field.
         if self.db_column:
