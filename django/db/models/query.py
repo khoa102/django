@@ -255,7 +255,7 @@ class QuerySet(object):
 
         only_load = self.query.get_loaded_field_names()
         if not fill_cache:
-            fields = self.model._meta.fields
+            fields = self.model._meta.concrete_fields
 
         load_fields = []
         # If only/defer clauses have been specified,
@@ -276,7 +276,7 @@ class QuerySet(object):
                     load_fields.append(field.name)
 
         index_start = len(extra_select)
-        aggregate_start = index_start + len(load_fields or self.model._meta.fields)
+        aggregate_start = index_start + len(load_fields or self.model._meta.concrete_fields)
 
         skip = None
         if load_fields and not fill_cache:
@@ -285,8 +285,6 @@ class QuerySet(object):
             skip = set()
             init_list = []
             for field in fields:
-                if field.virtual:
-                    continue
                 if field.name not in load_fields:
                     skip.add(field.attname)
                 else:
