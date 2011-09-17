@@ -419,7 +419,7 @@ class QuerySet(object):
             return objs
         self._for_write = True
         connection = connections[self.db]
-        fields = self.model._meta.local_fields
+        fields = self.model._meta.local_concrete
         if not transaction.is_managed(using=self.db):
             transaction.enter_transaction_management(using=self.db)
             forced_managed = True
