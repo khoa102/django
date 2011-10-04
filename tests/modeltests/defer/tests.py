@@ -9,7 +9,7 @@ from .models import Secondary, Primary, Child, BigChild, ChildProxy
 class DeferTests(TestCase):
     def assert_delayed(self, obj, num):
         count = 0
-        for field in obj._meta.fields:
+        for field in obj._meta.concrete_fields:
             if isinstance(obj.__class__.__dict__.get(field.attname),
                 DeferredAttribute):
                 count += 1

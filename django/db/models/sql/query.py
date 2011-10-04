@@ -659,7 +659,7 @@ class Query(object):
         if table not in target:
             target[table] = set()
         for field in fields:
-            target[table].add(field.column)
+            target[table].update(field.columns)
 
 
     def table_alias(self, table_name, create=False):
@@ -1766,6 +1766,37 @@ class Query(object):
         """
         self.deferred_loading = (set(), True)
 
+    def resolve_basic_deferred_fields(self, field_names):
+        """
+        Resolves field names into their basic constituents at the end
+        point of relationship chains. For each targeted composite field
+        this creates new strings with its name replaced by each of its
+        constituents.
+
+        This is done each time add_deferred_loading or
+        add_immediate_loading is called to make it possible to use
+        composite fields as shorthands for their sets of enclosed fields.
+        """
+        # TODO: This whole method has a big overlap with deferred_to_data.
+        # Ideally the whole deferred loading should be refactored to only
+        # resolve strings to fields once.
+        orig_opts = self.model._meta
+        resolved = set()
+        for field_name in field_names:
+            parts = field_name.split(LOOKUP_SEP)
+            cur_model = self.model
+            opts = orig_opts
+            for name in parts[:-1]:
+                old_model = cur_model
+                cur_model = opts.get_field_by_name(name)[0].rel.to
+                opts = cur_model._meta
+            field, model, _, _ = opts.get_field_by_name(parts[-1])
+            prefix = LOOKUP_SEP.join(parts[:-1])
+            if prefix:
+                prefix = prefix + LOOKUP_SEP
+            resolved.update(prefix + f.name for f in field.resolve_basic_fields())
+        return resolved
+
     def add_deferred_loading(self, field_names):
         """
         Add the given list of model field names to the set of fields to
@@ -1779,6 +1810,7 @@ class Query(object):
         # splitting and handling when computing the SQL colum names (as part of
         # get_columns()).
         existing, defer = self.deferred_loading
+        field_names = self.resolve_basic_deferred_fields(field_names)
         if defer:
             # Add to existing deferred names.
             self.deferred_loading = existing.union(field_names), True
@@ -1801,6 +1833,7 @@ class Query(object):
         if 'pk' in field_names:
             field_names.remove('pk')
             field_names.add(self.model._meta.pk.name)
+        field_names = self.resolve_basic_deferred_fields(field_names)
 
         if defer:
             # Remove any existing deferred names from the current set before
@@ -1833,7 +1866,8 @@ class Query(object):
         """
         Callback used by get_deferred_field_names().
         """
-        target[model] = set([f.name for f in fields])
+        target[model] = set([basic.name for f in fields
+                             for basic in f.resolve_basic_fields()])
 
     def set_aggregate_mask(self, names):
         "Set the mask of aggregates that will actually be returned by the SELECT"

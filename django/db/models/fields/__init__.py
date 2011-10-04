@@ -301,6 +301,10 @@ class Field(object):
     def get_internal_type(self):
         return self.__class__.__name__
 
+    def resolve_basic_fields(self):
+        "Returns a list of basic fields represented by this one."
+        return [self]
+
     def pre_save(self, model_instance, add):
         """
         Returns field's value just before saving.

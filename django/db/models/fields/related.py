@@ -1144,6 +1144,10 @@ class ForeignKey(RelatedField, Field):
     def get_enclosed_fields(self):
         return self.model._meta.get_field_by_name(self.attname)[0:1]
 
+    def resolve_basic_fields(self):
+        return [f for myfield in self.get_enclosed_fields()
+                for f in myfield.resolve_basic_fields()]
+
     def formfield(self, **kwargs):
         db = kwargs.pop('using', None)
         if isinstance(self.rel.to, six.string_types):

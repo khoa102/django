@@ -36,7 +36,11 @@ class VirtualField(Field):
     # (CompositeField) does. Therefore, to avoid ugly special-casing
     # inside the index creation code, this has been placed here.
     def get_enclosed_fields(self):
-        return None
+        return []
+
+    def resolve_basic_fields(self):
+        return [f for myfield in self.get_enclosed_fields()
+                for f in myfield.resolve_basic_fields()]
 
     def formfield(self):
         return None
