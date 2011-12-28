@@ -642,7 +642,8 @@ class SQLCompiler(object):
             columns, aliases = self.get_default_columns(start_alias=alias,
                     opts=f.rel.to._meta, as_pairs=True)
             self.query.related_select_cols.extend(
-                SelectInfo(col, field) for col, field in zip(columns, f.rel.to._meta.fields))
+                SelectInfo(col, field)
+                for col, field in zip(columns, f.rel.to._meta.concrete_fields))
             if restricted:
                 next = requested.get(f.name, {})
             else:
@@ -740,7 +741,7 @@ class SQLCompiler(object):
                         if self.query.select:
                             fields = [f.field for f in self.query.select]
                         else:
-                            fields = [f for f in self.query.model._meta.fields if not f.virtual]
+                            fields = self.query.model._meta.concrete_fields
                         fields = fields + [f.field for f in self.query.related_select_cols]
 
                         # If the field was deferred, exclude it from being passed

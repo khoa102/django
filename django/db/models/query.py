@@ -1383,7 +1383,7 @@ def get_klass_info(klass, max_depth=0, cur_depth=0, requested=None,
     restricted = requested is not None
 
     related_fields = []
-    for f in klass._meta.concrete_fields:
+    for f in klass._meta.fields:
         if select_related_descend(f, restricted, requested, load_fields):
             if restricted:
                 next = requested[f.name]
