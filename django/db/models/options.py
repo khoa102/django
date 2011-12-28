@@ -157,12 +157,10 @@ class Options(object):
         else:
             self.local_fields.insert(bisect(self.local_fields, field), field)
             self.setup_pk(field)
-            if hasattr(self, '_field_cache'):
-                del self._field_cache
-                del self._field_name_cache
+            self.invalidate_cache('_field_cache')
+            self.invalidate_cache('_field_name_cache')
 
-        if hasattr(self, '_name_map'):
-            del self._name_map
+        self.invalidate_cache('_name_map')
 
     def setup_pk(self, field):
         if not self.pk and field.primary_key:
@@ -466,6 +464,25 @@ class Options(object):
         if app_cache_ready():
             self._related_many_to_many_cache = cache
         return cache
+
+    def invalidate_cache(self, cache_name):
+        """
+        When adding a field to a model, we need to invalidate field
+        caches. Sometimes, however, subclasses have already been created
+        so we need to make sure their caches are invalidated as well.
+        """
+        if hasattr(self, cache_name):
+            delattr(self, cache_name)
+        # Since we don't hold a direct link to our model, we'll need to
+        # retrieve it from one of our fields.
+        model = None
+        if self.local_fields:
+            model = self.local_fields[0].model
+        elif self.local_many_to_many:
+            model = self.local_many_to_many[0].model
+        if model is not None:
+            for cls in model.__subclasses__():
+                cls._meta.invalidate_cache(cache_name)
 
     def get_base_chain(self, model):
         """
