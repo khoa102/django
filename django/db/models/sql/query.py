@@ -604,12 +604,12 @@ class Query(object):
                 # Even if we're "just passing through" this model, we must add
                 # both the current model's pk and the related reference field
                 # to the things we select.
-                must_include[old_model].add(source)
-                add_to_dict(must_include, cur_model, opts.pk)
+                must_include[old_model].update(source.resolve_basic_fields())
+                add_to_dict(must_include, cur_model, opts.pk.resolve_basic_fields())
             field, model, _, _ = opts.get_field_by_name(parts[-1])
             if model is None:
                 model = cur_model
-            add_to_dict(seen, model, field)
+            add_to_dict(seen, model, field.resolve_basic_fields())
 
         if defer:
             # We need to load all fields for each model, except those that
@@ -619,9 +619,9 @@ class Query(object):
             workset = {}
             for model, values in six.iteritems(seen):
                 for field, m in model._meta.get_fields_with_model():
-                    if field in values:
+                    if field in values or field.virtual:
                         continue
-                    add_to_dict(workset, m or model, field)
+                    add_to_dict(workset, m or model, field.resolve_basic_fields())
             for model, values in six.iteritems(must_include):
                 # If we haven't included a model in workset, we don't add the
                 # corresponding must_include fields for that model, since an
@@ -2002,12 +2002,12 @@ def setup_join_cache(sender, **kwargs):
 
 signals.class_prepared.connect(setup_join_cache)
 
-def add_to_dict(data, key, value):
+def add_to_dict(data, key, values):
     """
-    A helper function to add "value" to the set of values for "key", whether or
-    not "key" already exists.
+    A helper function to extend the set of values for "key" with items
+    from "values", whether or not "key" already exists.
     """
     if key in data:
-        data[key].add(value)
+        data[key].update(values)
     else:
-        data[key] = set([value])
+        data[key] = set(values)

@@ -28,6 +28,8 @@ class DeferTests(TestCase):
 
         self.assert_delayed(qs.defer("name")[0], 1)
         self.assert_delayed(qs.only("name")[0], 2)
+        self.assert_delayed(qs.defer("related")[0], 1)
+        self.assert_delayed(qs.only("name", "value")[0], 1)
         self.assert_delayed(qs.defer("related__first")[0], 0)
 
         # Using 'pk' with only() should result in 3 deferred fields, namely all

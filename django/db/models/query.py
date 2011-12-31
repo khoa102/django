@@ -1349,7 +1349,7 @@ def get_klass_info(klass, max_depth=0, cur_depth=0, requested=None,
         for field, model in klass._meta.get_fields_with_model():
             if field.virtual:
                 continue
-            if field.name not in load_fields:
+            if field.attname not in load_fields:
                 skip.add(field.attname)
             elif local_only and model is not None:
                 continue
