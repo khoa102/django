@@ -581,7 +581,7 @@ Thus, it's now possible to have multiple fields of type
 Multi-column primary keys
 -------------------------
 
-.. versionadded:: 1.4
+.. versionadded:: 1.5
 
 There are cases where you want a primary key to span multiple fields. One
 such case might be when specifying an explicit model to represent a
