@@ -434,11 +434,11 @@ class Model(six.with_metaclass(ModelBase, object)):
         if not self._deferred:
             return super(Model, self).__reduce__()
         data = self.__dict__
-        defers = []
+        defers = set()
         for field in self._meta.fields:
             if isinstance(self.__class__.__dict__.get(field.attname),
                     DeferredAttribute):
-                defers.append(field.attname)
+                defers.add(field.attname)
         model = self._meta.proxy_for_model
         return (model_unpickle, (model, defers), data)
 
