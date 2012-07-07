@@ -3696,6 +3696,7 @@ class AdminViewLogoutTest(TestCase):
         self.assertContains(response, '<input type="hidden" name="next" value="/test_admin/admin/" />')
 
 
+@override_settings(PASSWORD_HASHERS=('django.contrib.auth.hashers.SHA1PasswordHasher',))
 class AdminCompositePrimaryKeysTests(TestCase):
     """
     Checks that all supported admin functionality plays with composite primary
