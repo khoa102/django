@@ -298,10 +298,11 @@ class FormfieldCallbackTests(TestCase):
         self.assertTrue(isinstance(form['data'].field.widget, CustomWidget))
 
     def assertCallbackCalled(self, callback):
-        id_field, user_field, data_field = UserSite._meta.fields
+        id_field, user_field, user_id_field, data_field = UserSite._meta.fields
         expected_log = [
             (id_field, {}),
             (user_field, {}),
+            (user_id_field, {}),
             (data_field, {'widget': CustomWidget}),
         ]
         self.assertEqual(callback.log, expected_log)
