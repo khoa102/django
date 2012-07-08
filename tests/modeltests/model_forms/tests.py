@@ -1074,7 +1074,7 @@ class OldFormForXTests(TestCase):
         bw = BetterWriter(name='Joe Better', score=10)
         bw.save()
         self.assertEqual(sorted(model_to_dict(bw)),
-                         ['id', 'name', 'score', 'writer_ptr'])
+                         ['id', 'name', 'score', 'writer_ptr', 'writer_ptr_id'])
 
         form = BetterWriterForm({'name': 'Some Name', 'score': 12})
         self.assertEqual(form.is_valid(), True)
