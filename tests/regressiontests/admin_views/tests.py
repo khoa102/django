@@ -3811,6 +3811,7 @@ class AdminCompositePrimaryKeysTests(TestCase):
         # Verify we get the confirmation page.
         response = self.client.get("/test_admin/admin/admin_views/personwithcompositepk/%s/delete/" % bobby_url)
         self.assertContains(response, bobby_title)
+        self.assertContains(response, escape(bobby_url))
 
         # Now we verify the actual deletion.
         data = {
@@ -3841,7 +3842,7 @@ class AdminCompositePrimaryKeysTests(TestCase):
         response = self.client.post("/test_admin/admin/admin_views/personwithcompositepk/", data)
         # The response should contain both the description and a link.
         self.assertContains(response, bobby_title)
-        self.assertContains(response, bobby_url)
+        self.assertContains(response, escape(bobby_url))
 
         # Let's do it.
         data["_selected_action"] = bobby_pk
