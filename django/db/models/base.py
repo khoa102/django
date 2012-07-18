@@ -490,22 +490,25 @@ class Model(six.with_metaclass(ModelBase, object)):
             if len(update_fields) == 0:
                 return
 
-            update_fields = frozenset(update_fields)
-            field_names = set()
-
-            for field in self._meta.fields:
-                if not field.primary_key:
-                    field_names.add(field.name)
-
-                    if field.name != field.attname:
-                        field_names.add(field.attname)
-
-            non_model_fields = update_fields.difference(field_names)
+            basic_update_fields = set()
+            non_model_fields = set()
+            for f in update_fields:
+                try:
+                    field, model, direct, m2m = self._meta.get_field_by_name(f)
+                    if m2m:
+                        raise FieldDoesNotExist()
+                    basic_update_fields.update(
+                            basic_field.name for basic_field in
+                            field.resolve_basic_fields()
+                    )
+                except FieldDoesNotExist:
+                    non_model_fields.add(f)
+            update_fields = frozenset(basic_update_fields)
 
             if non_model_fields:
                 raise ValueError("The following fields do not exist in this "
                                  "model or are m2m fields: %s"
-                                 % ', '.join(non_model_fields))
+                                 % ', '.join(sorted(non_model_fields)))
 
         # If saving to the same database, and this model is deferred, then
         # automatically do a "update_fields" save on the loaded fields.
