@@ -515,7 +515,13 @@ class Model(six.with_metaclass(ModelBase, object)):
         elif not force_insert and self._deferred and using == self._state.db:
             field_names = set()
             for field in self._meta.fields:
-                if not field.primary_key and not hasattr(field, 'through'):
+                # The following set of conditions for fields that are
+                # auxiliary to a primary_key ForeignKey can probably be
+                # somehow simplified.
+                if (not field.primary_key and not hasattr(field, 'through')
+                        and not field.virtual
+                        and (field.auxiliary_to is None
+                             or not field.auxiliary_to.primary_key)):
                     field_names.add(field.attname)
             deferred_fields = [
                 f.attname for f in self._meta.fields
