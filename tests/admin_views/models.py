@@ -781,3 +781,36 @@ class Worker(models.Model):
     work_at = models.ForeignKey(Restaurant)
     name = models.CharField(max_length=50)
     surname = models.CharField(max_length=50)
+
+
+@python_2_unicode_compatible
+class PersonWithCompositePK(models.Model):
+    first_name = models.CharField(max_length=47)
+    last_name = models.CharField(max_length=47)
+
+    full_name = models.CompositeField(first_name, last_name, primary_key=True)
+
+    def __str__(self):
+        return "%s %s" % self.full_name
+
+
+class WeekDay(models.Model):
+    pos = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=10)
+
+
+class Sentence(models.Model):
+    sentence = models.CharField(max_length=128)
+
+
+@python_2_unicode_compatible
+class SentenceFreq(models.Model):
+    weekday = models.ForeignKey(WeekDay, db_column='wd')
+    sentence = models.ForeignKey(Sentence)
+    score = models.FloatField()
+
+    composite_key = models.CompositeField(
+        weekday, sentence, primary_key=True)
+
+    def __str__(self):
+        return self.sentence.sentence.replace('?', self.weekday.name)
