@@ -1543,7 +1543,7 @@ class Query(object):
         self.distinct_fields = field_names
         self.distinct = True
 
-    def add_fields(self, field_names, allow_m2m=True):
+    def add_fields(self, field_names, allow_m2m=True, allow_multicol=True):
         """
         Adds the given (model) fields to the select set. The field names are
         added in the order specified.
@@ -1558,6 +1558,8 @@ class Query(object):
                 field, targets, u2, joins, path = self.setup_joins(
                     name.split(LOOKUP_SEP), opts, alias, can_reuse=None,
                     allow_many=allow_m2m)
+                if not allow_multicol and len(field.resolve_basic_fields()) > 1:
+                    raise ValueError("Multicolumn fields not allowed in this query")
                 targets, final_alias, joins = self.trim_joins(targets, joins, path)
                 for target in targets:
                     for f in target.resolve_basic_fields():

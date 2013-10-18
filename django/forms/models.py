@@ -147,7 +147,7 @@ def model_to_dict(instance, fields=None, exclude=None):
                 if qs._result_cache is not None:
                     data[f.name] = [item.pk for item in qs]
                 else:
-                    data[f.name] = list(qs.values_list('pk', flat=True))
+                    data[f.name] = list(qs.values_list('pk', flat=len(f.resolve_basic_fields()) == 1))
         else:
             data[f.name] = f.value_from_object(instance)
     return data
