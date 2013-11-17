@@ -193,6 +193,11 @@ def get_composite_value_class(name, fields):
                 return tuple(self) == other
             return False
 
+        def __hash__(self):
+            # This is required by Python 3 where definint __eq__ without
+            # __hash__ results in __hash__ being set to None.
+            return hash(tuple(self))
+
     return CompositeValue
 
 
