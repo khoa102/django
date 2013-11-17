@@ -122,7 +122,7 @@ class Arena(models.Model):
 class Team(models.Model):
     id = models.AutoField(primary_key=True)
     home_field = models.ForeignKey(Arena)
-    home_arena_uq = models.CompositeField(id, home_field)
+    home_arena_uq = models.CompositeField(id, home_field, unique=True)
 
 
 class Game(models.Model):

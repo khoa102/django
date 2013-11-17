@@ -346,6 +346,26 @@ class CompositeFieldTests(TestCase):
 
 
 class CompositeFieldTransactionTests(TransactionTestCase):
+    available_apps = ['composite_fields']
+
+    def setUp(self):
+        self.p1 = PersonWithBirthplace.objects.create(
+            first_name='John', last_name='Lennon', birthday=date(1940, 10, 9),
+            birthplace='Liverpool',
+        )
+        self.p2 = Person.objects.create(
+            first_name='George', last_name='Harrison', birthday=date(1943, 2, 25),
+        )
+        PersonWithBirthplace.objects.create(
+            first_name='Paul', last_name='McCartney', birthday=date(1942, 6, 18),
+            birthplace='Liverpool',
+        )
+        Person.objects.create(
+            first_name='Ringo', last_name='Starr', birthday=date(1940, 7, 7),
+        )
+        self.h1 = House.objects.create(street_address='Maple street 1', zip_code='01234')
+        self.h2 = House.objects.create(street_address='Maple street 2', zip_code='01234')
+
     @unittest.skipUnless(connection.features.supports_foreign_keys, "No FK support")
     def test_composite_fk_database_constraints(self):
         with self.assertRaises(IntegrityError):
