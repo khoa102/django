@@ -4946,8 +4946,9 @@ class AdminCompositePrimaryKeysTests(TestCase):
         list_response = self.client.get(list_url)
         self.assertEqual(list_response.status_code, 200)
         href = re.search(
-            r'<a href="([^"]+)">Wednesday is', list_response.content).group(1)
+            br'<a href="([^"]+)">Wednesday is', list_response.content).group(1)
 
+        href = href.decode('utf-8')
         item_url = posixpath.join(list_url, href)
         item_response = self.client.get(item_url)
         self.assertEqual(item_response.status_code, 200)
