@@ -285,7 +285,7 @@ class ReverseSingleRelatedObjectDescriptor(six.with_metaclass(RenameRelatedObjec
         # solve a regression on 1.6 when the reverse manager in hidden
         # (related_name ends with a '+'). Refs #21410.
         if self.field.rel.is_hidden():
-            query = {'%s__in' % related_field.name: set(instance_attr(inst)[0] for inst in instances)}
+            query = {'%s__in' % related_field.name: set(instance_attr(inst) for inst in instances)}
         else:
             query = {'%s__in' % self.field.related_query_name(): instances}
 
